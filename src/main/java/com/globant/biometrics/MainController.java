@@ -69,5 +69,8 @@ public class MainController {
         return result;
     }
 
-
+    @After("*")
+    public void handleResponse (Response response) {
+        response.addHeader("Access-Control-Allow-Origin", "*");
+    }
 }
