@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.globant.macro</groupId>
+    <artifactId>Biometrics</artifactId>
+    <version>1.0.2</version>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>9</source>
+                    <target>9</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <archive>
+                                <manifest>
+                                    <mainClass>com.globant.biometrics.Main</mainClass>
+                                </manifest>
+                            </archive>
+                            <descriptorRefs>
+                                <descriptorRef>jar-with-dependencies</descriptorRef>
+                            </descriptorRefs>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+
+        <!-- WARP -->
+        <dependency>
+            <groupId>com.github.luismanuelamengual</groupId>
+            <artifactId>NeoGroup-Warp</artifactId>
+            <version>1.0.13</version>
+        </dependency>
+
+        <!-- JWT -->
+        <dependency>
+            <groupId>com.auth0</groupId>
+            <artifactId>java-jwt</artifactId>
+            <version>3.9.0</version>
+        </dependency>
+
+        <!-- OPENCV -->
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>opencv</artifactId>
+            <version>4.1.2-1.5.2</version>
+        </dependency>
+
+        <!-- AMAZON -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>bom</artifactId>
+            <version>2.10.39</version>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>com.amazonaws</groupId>
+            <artifactId>aws-java-sdk-rekognition</artifactId>
+            <version>1.11.697</version>
+        </dependency>
+
+        <!-- JACKSON -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>2.10.2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>2.10.2</version>
+        </dependency>
+
+        <!-- JAXB -->
+        <dependency>
+            <groupId>org.glassfish.jaxb</groupId>
+            <artifactId>jaxb-runtime</artifactId>
+            <version>2.3.0.1</version>
+        </dependency>
+
+        <!--
+        Install package for linux (Desde el raiz de maven C:\Program Files\JetBrains\IntelliJ IDEA Community Edition 2019.2.3\plugins\maven\lib\maven3\bin)
+        mvn install:install-file -Dfile=C:/Users/luis.amengual/Desktop/biometrics/Dynamsoft/BarcodeReader/lib/DynamsoftBarcodeReader_Linux.jar -DgroupId=com.dynamsoft -DartifactId=barcodeReaderLinux -Dversion=1.0 -Dpackaging=jar -DgeneratePom=true
+        -->
+        <dependency>
+            <groupId>com.dynamsoft</groupId>
+            <artifactId>barcodeReaderLinux</artifactId>
+            <version>1.0</version>
+        </dependency>
+
+        <!--<dependency>
+            <groupId>com.sample</groupId>
+            <artifactId>sample</artifactId>
+            <version>1.0</version>
+            <scope>system</scope>
+            <systemPath>C:/Program Files (x86)/Dynamsoft/Barcode Reader 7.3/Components/Java/DynamsoftBarcodeReader_Win.jar</systemPath>
+        </dependency>-->
+    </dependencies>
+</project>
