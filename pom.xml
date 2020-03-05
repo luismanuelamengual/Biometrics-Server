@@ -13,8 +13,8 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <source>9</source>
-                    <target>9</target>
+                    <source>13</source>
+                    <target>13</target>
                 </configuration>
             </plugin>
             <plugin>
@@ -106,12 +106,5 @@
             <version>1.0</version>
         </dependency>
 
-        <!--<dependency>
-            <groupId>com.sample</groupId>
-            <artifactId>sample</artifactId>
-            <version>1.0</version>
-            <scope>system</scope>
-            <systemPath>C:/Program Files (x86)/Dynamsoft/Barcode Reader 7.3/Components/Java/DynamsoftBarcodeReader_Win.jar</systemPath>
-        </dependency>-->
     </dependencies>
 </project>
