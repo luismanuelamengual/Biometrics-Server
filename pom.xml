@@ -77,6 +77,15 @@
             <version>1.11.697</version>
         </dependency>
 
+        <!-- Dynamsoft -->
+        <dependency>
+            <groupId>com.dynamsoft</groupId>
+            <artifactId>barcodeReaderLinux</artifactId>
+            <version>1.0</version>
+            <scope>system</scope>
+            <systemPath>${basedir}/lib/DynamsoftBarcodeReader-7.3/lib/DynamsoftBarcodeReader_Linux.jar</systemPath>
+        </dependency>
+
         <!-- JACKSON -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -94,16 +103,6 @@
             <groupId>org.glassfish.jaxb</groupId>
             <artifactId>jaxb-runtime</artifactId>
             <version>2.3.0.1</version>
-        </dependency>
-
-        <!--
-        Install package for linux (Desde el raiz de maven C:\Program Files\JetBrains\IntelliJ IDEA Community Edition 2019.2.3\plugins\maven\lib\maven3\bin)
-        mvn install:install-file -Dfile=C:/Users/luis.amengual/Desktop/biometrics/Dynamsoft/BarcodeReader/lib/DynamsoftBarcodeReader_Linux.jar -DgroupId=com.dynamsoft -DartifactId=barcodeReaderLinux -Dversion=1.0 -Dpackaging=jar -DgeneratePom=true
-        -->
-        <dependency>
-            <groupId>com.dynamsoft</groupId>
-            <artifactId>barcodeReaderLinux</artifactId>
-            <version>1.0</version>
         </dependency>
 
     </dependencies>
