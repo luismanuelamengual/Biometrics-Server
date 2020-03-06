@@ -4,9 +4,6 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
-import com.globant.biometrics.utils.AmazonUtils;
-import com.globant.biometrics.utils.DynamsoftUtils;
-import com.globant.biometrics.utils.OpenCVUtils;
 import org.neogroup.warp.Request;
 import org.neogroup.warp.Response;
 import org.neogroup.warp.controllers.ControllerComponent;
@@ -29,14 +26,11 @@ public class MainController {
     }
 
     @Get("session")
-    public DataObject createSession(@Parameter("client") String clientName) throws Exception {
+    public String createSession(@Parameter("client") String clientName) throws Exception {
         DataObject result = Data.object();
         String secretKey = getProperty("jwt_secret_key");
         Algorithm algorithm = Algorithm.HMAC256(secretKey);
-        String token = JWT.create().withIssuer("auth0").withClaim("client", clientName).sign(algorithm);
-        result.set("success", true);
-        result.set("token", token);
-        return result;
+        return JWT.create().withIssuer("auth0").withClaim("client", clientName).sign(algorithm);
     }
 
     @Before("*")
@@ -70,7 +64,14 @@ public class MainController {
     }
 
     @After("*")
-    public void handleResponse (Response response) {
+    public DataObject handleResponse (Response response) {
         response.addHeader("Access-Control-Allow-Origin", "*");
+        DataObject result = Data.object();
+        result.set("success", true);
+        Object responseObject = response.getResponseObject();
+        if (responseObject != null) {
+            result.set("data", response.getResponseObject());
+        }
+        return result;
     }
 }
