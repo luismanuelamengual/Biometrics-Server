@@ -72,7 +72,7 @@ public final class AmazonUtils {
         return labels != null && labels.contains(type);
     }
 
-    private static Image getImageFromBytes(byte[] imageBytes) {
+    public static Image getImageFromBytes(byte[] imageBytes) {
         return new Image().withBytes(ByteBuffer.wrap(imageBytes));
     }
 }

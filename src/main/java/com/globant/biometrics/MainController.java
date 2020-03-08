@@ -27,7 +27,6 @@ public class MainController {
 
     @Get("session")
     public String createSession(@Parameter("client") String clientName) throws Exception {
-        DataObject result = Data.object();
         String secretKey = getProperty("jwt_secret_key");
         Algorithm algorithm = Algorithm.HMAC256(secretKey);
         return JWT.create().withIssuer("auth0").withClaim("client", clientName).sign(algorithm);
