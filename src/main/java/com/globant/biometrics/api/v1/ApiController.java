@@ -156,24 +156,42 @@ public class ApiController {
 
     @Post("scan_document_data")
     public DataObject scanDocument(@Parameter("documentFront") byte[] documentFront, @Parameter("documentBack") byte[] documentBack) throws Exception {
-        String documentText = DynamsoftUtils.readDocumentDataFromImageBarcode(documentFront);
-        if (documentText == null) {
-            documentText = DynamsoftUtils.readDocumentDataFromImageBarcode(documentBack);
+
+        DataObject response = null;
+
+        String pdf417RawText = DynamsoftUtils.readDocumentDataFromImageBarcode(documentBack);
+        if (pdf417RawText == null) {
+            pdf417RawText = DynamsoftUtils.readDocumentDataFromImageBarcode(documentFront);
         }
 
-        if (documentText == null) {
+        if (pdf417RawText != null) {
+            String[] dataTokens = pdf417RawText.split("@");
+            response = Data.object()
+                .set("type", "PDF417")
+                .set("raw", pdf417RawText)
+                .set("information", Data.object()
+                    .set("firstName", dataTokens[2])
+                    .set("lastName", dataTokens[1])
+                    .set("documentNumber", dataTokens[4])
+                    .set("gender", dataTokens[3])
+                    .set("birthDate", dataTokens[6])
+                    .set("nationalIdentificationNumber", dataTokens[0]));
+        }
+
+        if (response == null) {
+            String mrzRawText = getMRZCodeFromImage(documentBack);
+            if (mrzRawText == null) {
+                mrzRawText = getMRZCodeFromImage(documentFront);
+            }
+            response = Data.object()
+                .set("type", "MRZ")
+                .set("raw", mrzRawText);
+        }
+
+        if (response == null) {
             throw new RuntimeException("Document data could not be read");
         }
-
-        String[] dataTokens = documentText.split("@");
-        return Data.object()
-            .set("documentData", Data.object()
-                .set("firstName", dataTokens[2])
-                .set("lastName", dataTokens[1])
-                .set("documentNumber", dataTokens[4])
-                .set("gender", dataTokens[3])
-                .set("birthDate", dataTokens[6])
-                .set("nationalIdentificationNumber", dataTokens[0]));
+        return response;
     }
 
     private String getMRZCodeFromImage (byte[] image) throws Exception {
