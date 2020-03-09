@@ -133,7 +133,7 @@ public final class OpenCVUtils {
     }
 
     public static Mat detectMRZ(Mat img) {
-        Mat roi = new Mat();
+        Mat roi = null;
         Mat rectKernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(13,5));
         Mat sqKernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(21,21));
 

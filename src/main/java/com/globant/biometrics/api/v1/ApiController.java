@@ -12,6 +12,8 @@ import org.opencv.core.Mat;
 import org.opencv.core.Rect;
 import org.opencv.objdetect.CascadeClassifier;
 
+import java.util.List;
+
 @ControllerComponent("v1")
 public class ApiController {
 
@@ -172,5 +174,16 @@ public class ApiController {
                 .set("gender", dataTokens[3])
                 .set("birthDate", dataTokens[6])
                 .set("nationalIdentificationNumber", dataTokens[0]));
+    }
+
+    private String getMRZCodeFromImage (byte[] image) throws Exception {
+        String mrzCode = null;
+        Mat mrzMat = OpenCVUtils.detectMRZ(OpenCVUtils.getImageMat(image));
+        if (mrzMat != null) {
+            byte[] mrzBytes = OpenCVUtils.getImageBytes(mrzMat);
+            List<String> texts = AmazonUtils.getImageTexts(mrzBytes);
+            mrzCode = String.join("", texts);
+        }
+        return mrzCode;
     }
 }

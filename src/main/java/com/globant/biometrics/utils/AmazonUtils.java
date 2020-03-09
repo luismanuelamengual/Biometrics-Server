@@ -43,7 +43,9 @@ public final class AmazonUtils {
         if (textDetections != null && !textDetections.isEmpty()) {
             texts = new ArrayList<>();
             for (TextDetection text: textDetections) {
-                texts.add(text.getDetectedText());
+                if (text.getType().equals("WORD")) {
+                    texts.add(text.getDetectedText());
+                }
             }
         }
         return texts;
