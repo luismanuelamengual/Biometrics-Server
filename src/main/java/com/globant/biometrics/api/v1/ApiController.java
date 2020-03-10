@@ -1,8 +1,11 @@
 package com.globant.biometrics.api.v1;
 
+import com.dynamsoft.barcode.BarcodeReader;
+import com.dynamsoft.barcode.TextResult;
 import com.globant.biometrics.utils.AmazonUtils;
-import com.globant.biometrics.utils.DynamsoftUtils;
 import com.globant.biometrics.utils.OpenCVUtils;
+import net.sourceforge.tess4j.Tesseract;
+import net.sourceforge.tess4j.util.LoadLibs;
 import org.neogroup.warp.controllers.ControllerComponent;
 import org.neogroup.warp.controllers.routing.Parameter;
 import org.neogroup.warp.controllers.routing.Post;
@@ -12,7 +15,10 @@ import org.opencv.core.Mat;
 import org.opencv.core.Rect;
 import org.opencv.objdetect.CascadeClassifier;
 
-import java.util.List;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.util.HashMap;
+import java.util.Map;
 
 @ControllerComponent("v1")
 public class ApiController {
@@ -32,12 +38,16 @@ public class ApiController {
     private CascadeClassifier profileFaceClassifier;
     private CascadeClassifier eyeClassifier;
     private CascadeClassifier eyePairClassifier;
+    private Tesseract tesseract;
 
     public ApiController() {
         faceClassfier = OpenCVUtils.getClassfierFromResource("cascades/face.xml");
         profileFaceClassifier = OpenCVUtils.getClassfierFromResource("cascades/profile-face.xml");
         eyeClassifier = OpenCVUtils.getClassfierFromResource("cascades/eye.xml");
         eyePairClassifier = OpenCVUtils.getClassfierFromResource("cascades/eye-pair.xml");
+        tesseract = new Tesseract();
+        tesseract.setDatapath(LoadLibs.extractTessResources("tessdata").getAbsolutePath());
+        tesseract.setLanguage("spa");
     }
 
     @Post("check_liveness_instruction")
@@ -158,24 +168,16 @@ public class ApiController {
     public DataObject scanDocument(@Parameter("documentFront") byte[] documentFront, @Parameter("documentBack") byte[] documentBack) throws Exception {
 
         DataObject response = null;
-
-        String pdf417RawText = DynamsoftUtils.readDocumentDataFromImageBarcode(documentBack);
+        String pdf417RawText = getPDF417CodeImage(documentFront);
         if (pdf417RawText == null) {
-            pdf417RawText = DynamsoftUtils.readDocumentDataFromImageBarcode(documentFront);
+            pdf417RawText = getPDF417CodeImage(documentBack);
         }
 
         if (pdf417RawText != null) {
-            String[] dataTokens = pdf417RawText.split("@");
             response = Data.object()
                 .set("type", "PDF417")
                 .set("raw", pdf417RawText)
-                .set("information", Data.object()
-                    .set("firstName", dataTokens[2])
-                    .set("lastName", dataTokens[1])
-                    .set("documentNumber", dataTokens[4])
-                    .set("gender", dataTokens[3])
-                    .set("birthDate", dataTokens[6])
-                    .set("nationalIdentificationNumber", dataTokens[0]));
+                .set("information", getDocumentDataFromPDF417Code(pdf417RawText));
         }
 
         if (response == null) {
@@ -185,7 +187,8 @@ public class ApiController {
             }
             response = Data.object()
                 .set("type", "MRZ")
-                .set("raw", mrzRawText);
+                .set("raw", mrzRawText)
+                .set("information", getDocumentDataFromMRZCode(mrzRawText));
         }
 
         if (response == null) {
@@ -194,14 +197,58 @@ public class ApiController {
         return response;
     }
 
+    private Map<String,String> getDocumentDataFromPDF417Code (String pdf317Code) {
+        String[] dataTokens = pdf317Code.split("@");
+        Map<String,String> documentData = new HashMap<>();
+        documentData.put("firstName", dataTokens[2]);
+        documentData.put("lastName", dataTokens[1]);
+        documentData.put("documentNumber", dataTokens[4]);
+        documentData.put("gender", dataTokens[3]);
+        documentData.put("birthDate", dataTokens[6]); // TODO homogeneizar birthDate (timestamp?)
+        documentData.put("nationalIdentificationNumber", dataTokens[0]);
+        return documentData;
+    }
+
+    private Map<String,String> getDocumentDataFromMRZCode (String mrzCode) {
+        Map<String,String> documentData = new HashMap<>();
+        if (mrzCode.length() == 90) {
+            String section1 = mrzCode.substring(0, 30);
+            String section2 = mrzCode.substring(30, 60);
+            String section3 = mrzCode.substring(60, 90);
+            documentData.put("documentNumber", section1.substring(5, section1.indexOf("<")));
+            documentData.put("birthDate", section2.substring(0, 6)); // TODO homogeneizar birthDate (timestamp?)
+            documentData.put("gender", section2.substring(7, 8));
+            String[] name = section3.split("<<");
+            documentData.put("lastName", name[0].replace("<", " "));
+            documentData.put("firstName", name[1].replace("<", " "));
+        }
+        return documentData;
+    }
+
     private String getMRZCodeFromImage (byte[] image) throws Exception {
         String mrzCode = null;
         Mat mrzMat = OpenCVUtils.detectMRZ(OpenCVUtils.getImageMat(image));
         if (mrzMat != null) {
-            byte[] mrzBytes = OpenCVUtils.getImageBytes(mrzMat);
-            List<String> texts = AmazonUtils.getImageTexts(mrzBytes);
-            mrzCode = String.join("", texts);
+            Image mrzImage = OpenCVUtils.getBufferedImage(mrzMat);
+            mrzCode = tesseract.doOCR((BufferedImage)mrzImage);
+            if (mrzCode != null && !mrzCode.isEmpty()) {
+                mrzCode = mrzCode.replaceAll("\n", "");
+            }
         }
         return mrzCode;
+    }
+
+    public static String getPDF417CodeImage(byte[] imageBytes) throws Exception {
+        String pdf417Code = null;
+        BarcodeReader dbr = new BarcodeReader();
+        TextResult[] result = dbr.decodeFileInMemory(imageBytes, "");
+        if (result != null && result.length > 0) {
+            TextResult barcodeData = result[0];
+            int dataLimitIndex = barcodeData.barcodeText.indexOf("***");
+            if (dataLimitIndex > 0) {
+                pdf417Code = barcodeData.barcodeText.substring(0, dataLimitIndex);
+            }
+        }
+        return pdf417Code;
     }
 }

@@ -86,6 +86,13 @@
             <systemPath>${basedir}/lib/DynamsoftBarcodeReader-7.3/lib/DynamsoftBarcodeReader_Linux.jar</systemPath>
         </dependency>
 
+        <!-- Tesseract -->
+        <dependency>
+            <groupId>net.sourceforge.tess4j</groupId>
+            <artifactId>tess4j</artifactId>
+            <version>4.5.1</version>
+        </dependency>
+
         <!-- JACKSON -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
