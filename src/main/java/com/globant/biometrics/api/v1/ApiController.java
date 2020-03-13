@@ -200,8 +200,8 @@ public class ApiController {
     private Map<String,String> getDocumentDataFromPDF417Code (String pdf317Code) {
         String[] dataTokens = pdf317Code.split("@");
         Map<String,String> documentData = new HashMap<>();
-        documentData.put("firstName", dataTokens[2]);
-        documentData.put("lastName", dataTokens[1]);
+        documentData.put("firstName", formatName(dataTokens[2]));
+        documentData.put("lastName", formatName(dataTokens[1]));
         documentData.put("documentNumber", dataTokens[4]);
         documentData.put("gender", dataTokens[3]);
         documentData.put("birthDate", dataTokens[6]); // TODO homogeneizar birthDate (timestamp?)
@@ -219,10 +219,24 @@ public class ApiController {
             documentData.put("birthDate", section2.substring(0, 6)); // TODO homogeneizar birthDate (timestamp?)
             documentData.put("gender", section2.substring(7, 8));
             String[] name = section3.split("<<");
-            documentData.put("lastName", name[0].replace("<", " "));
-            documentData.put("firstName", name[1].replace("<", " "));
+            documentData.put("lastName", formatName(name[0].replace("<", " ")));
+            documentData.put("firstName", formatName(name[1].replace("<", " ")));
         }
         return documentData;
+    }
+
+    public String formatName(final String text) {
+        char[] chars = text.toLowerCase().toCharArray();
+        boolean found = false;
+        for (int i = 0; i < chars.length; i++) {
+            if (!found && Character.isLetter(chars[i])) {
+                chars[i] = Character.toUpperCase(chars[i]);
+                found = true;
+            } else if (Character.isWhitespace(chars[i]) || chars[i]=='.' || chars[i]=='\'') { // You can add other chars here
+                found = false;
+            }
+        }
+        return String.valueOf(chars);
     }
 
     private String getMRZCodeFromImage (byte[] image) throws Exception {
