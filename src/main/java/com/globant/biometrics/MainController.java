@@ -56,6 +56,7 @@ public class MainController {
 
     @Error("*")
     public DataObject errorHandler(Throwable exception) {
+        exception.printStackTrace();
         DataObject result = Data.object();
         result.set("success", false);
         result.set("message", exception.getMessage());
