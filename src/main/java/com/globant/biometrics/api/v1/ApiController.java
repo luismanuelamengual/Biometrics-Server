@@ -157,17 +157,24 @@ public class ApiController {
 
     @Post("verify_identity")
     public DataObject verifyIdentity(@Parameter("selfie") byte[] selfie, @Parameter("documentFront") byte[] documentFront, @Parameter("documentBack") byte[] documentBack) {
+        Mat selfieMat = OpenCVUtils.detectBiggestFeature(OpenCVUtils.getMat(selfie), faceClassfier);
+        if (selfieMat == null || selfieMat.empty()) {
+            throw new RuntimeException ("No face found in selfie");
+        }
+        Mat documentFaceMat = OpenCVUtils.detectBiggestFeature(OpenCVUtils.getMat(documentFront), faceClassfier);
+        if (documentFaceMat == null || documentFaceMat.empty()) {
+            documentFaceMat = OpenCVUtils.detectBiggestFeature(OpenCVUtils.getMat(documentBack), faceClassfier);
+        }
+        if (documentFaceMat == null || documentFaceMat.empty()) {
+            throw new RuntimeException ("No face found in document");
+        }
+
+        byte[] selfieBytes = OpenCVUtils.getImageBytes(selfieMat);
+        byte[] documentSelfieBytes = OpenCVUtils.getImageBytes(documentFaceMat);
         boolean match = false;
-        float similarity = 0;
-        similarity = compareFacesInImages (selfie, documentFront);
+        float similarity = compareFacesInImages (selfieBytes, documentSelfieBytes);
         if (similarity > 0) {
             match = true;
-        }
-        if (!match) {
-            similarity = compareFacesInImages (selfie, documentBack);
-            if (similarity > 0) {
-                match = true;
-            }
         }
         return Data.object()
             .set("match", match)

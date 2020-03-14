@@ -16,7 +16,7 @@ import java.io.OutputStream;
 
 public final class OpenCVUtils {
 
-    public static Mat getMat(byte[] imageBytes) throws Exception {
+    public static Mat getMat(byte[] imageBytes) {
         return Imgcodecs.imdecode(new MatOfByte(imageBytes), Imgcodecs.IMREAD_UNCHANGED);
     }
 
@@ -79,7 +79,7 @@ public final class OpenCVUtils {
         return features;
     }
 
-    public static Mat detectBiggestMat(Mat image, CascadeClassifier classifier) {
+    public static Mat detectBiggestFeature(Mat image, CascadeClassifier classifier) {
         MatOfRect features = detectFeatures(image, classifier);
         Rect biggestFeature = null;
         double biggestFeatureArea = 0.0;
