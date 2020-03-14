@@ -185,10 +185,13 @@ public class ApiController {
             if (mrzRawText == null) {
                 mrzRawText = getMRZCodeFromImage(documentFront);
             }
-            response = Data.object()
-                .set("type", "MRZ")
-                .set("raw", mrzRawText)
-                .set("information", getDocumentDataFromMRZCode(mrzRawText));
+
+            if (mrzRawText != null) {
+                response = Data.object()
+                    .set("type", "MRZ")
+                    .set("raw", mrzRawText)
+                    .set("information", getDocumentDataFromMRZCode(mrzRawText));
+            }
         }
 
         if (response == null) {
