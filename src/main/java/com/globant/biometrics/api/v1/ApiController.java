@@ -67,27 +67,27 @@ public class ApiController {
             throw new Exception("Unrecognized liveness instruction");
         }
 
-        Mat image = OpenCVUtils.getImageMat(selfie);
-        Rect frontalFaceRect = OpenCVUtils.detectBiggestFeature(image, faceClassfier);
-        Rect eyePairRect = OpenCVUtils.detectBiggestFeature(image, eyePairClassifier);
+        Mat image = OpenCVUtils.getMat(selfie);
+        Rect frontalFaceRect = OpenCVUtils.detectBiggestFeatureRect(image, faceClassfier);
+        Rect eyePairRect = OpenCVUtils.detectBiggestFeatureRect(image, eyePairClassifier);
         Rect faceRect = null;
         String faceInstruction = null;
 
-        if (frontalFaceRect != null && eyePairRect != null && OpenCVUtils.featureContains(frontalFaceRect, eyePairRect)) {
+        if (frontalFaceRect != null && eyePairRect != null && OpenCVUtils.containsRect(frontalFaceRect, eyePairRect)) {
             faceRect = frontalFaceRect;
             faceInstruction = FRONTAL_FACE_INSTRUCTION;
         } else {
-            Rect[] eyeRects = OpenCVUtils.detectFeatures(image, eyeClassifier);
-            Rect rightFaceRect = OpenCVUtils.detectBiggestFeature(image, profileFaceClassifier);
-            if (rightFaceRect != null && eyePairRect == null && OpenCVUtils.featureContainsAny(rightFaceRect, eyeRects)) {
+            Rect[] eyeRects = OpenCVUtils.detectFeatureRects(image, eyeClassifier);
+            Rect rightFaceRect = OpenCVUtils.detectBiggestFeatureRect(image, profileFaceClassifier);
+            if (rightFaceRect != null && eyePairRect == null && OpenCVUtils.containerAnyRect(rightFaceRect, eyeRects)) {
                 faceRect = rightFaceRect;
                 faceInstruction = RIGHT_PROFILE_FACE_INSTRUCTION;
             } else {
-                Rect leftFaceRect = OpenCVUtils.detectBiggestFeature(OpenCVUtils.flipImageMat(image), profileFaceClassifier);
+                Rect leftFaceRect = OpenCVUtils.detectBiggestFeatureRect(OpenCVUtils.flipMat(image), profileFaceClassifier);
                 if (leftFaceRect != null) {
                     leftFaceRect.x = image.width() - leftFaceRect.x - leftFaceRect.width;
                 }
-                if (leftFaceRect != null && eyePairRect == null && OpenCVUtils.featureContainsAny(leftFaceRect, eyeRects)) {
+                if (leftFaceRect != null && eyePairRect == null && OpenCVUtils.containerAnyRect(leftFaceRect, eyeRects)) {
                     faceRect = leftFaceRect;
                     faceInstruction = LEFT_PROFILE_FACE_INSTRUCTION;
                 } else {
@@ -254,7 +254,7 @@ public class ApiController {
 
     private String getMRZCodeFromImage (byte[] image) throws Exception {
         String mrzCode = null;
-        Mat mrzMat = detectMRZ(OpenCVUtils.getImageMat(image));
+        Mat mrzMat = detectMRZ(OpenCVUtils.getMat(image));
         if (mrzMat != null) {
             Image mrzImage = OpenCVUtils.getBufferedImage(mrzMat);
             mrzCode = tesseract.doOCR((BufferedImage)mrzImage);
@@ -303,10 +303,10 @@ public class ApiController {
         Mat sqKernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(21,21));
 
         if (img.width() > 800) {
-            img = OpenCVUtils.resizeImageMat(img, 800, img.height() * 800 / img.width());
+            img = OpenCVUtils.resizeMat(img, 800, img.height() * 800 / img.width());
         }
         if (img.height() > 600) {
-            img = OpenCVUtils.resizeImageMat(img, img.width() * 600 / img.height(), 600);
+            img = OpenCVUtils.resizeMat(img, img.width() * 600 / img.height(), 600);
         }
         Mat gray = new Mat();
         Imgproc.cvtColor(img, gray, Imgproc.COLOR_BGR2GRAY);

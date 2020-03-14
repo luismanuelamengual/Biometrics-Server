@@ -16,7 +16,7 @@ import java.io.OutputStream;
 
 public final class OpenCVUtils {
 
-    public static Mat getImageMat(byte[] imageBytes) throws Exception {
+    public static Mat getMat(byte[] imageBytes) throws Exception {
         return Imgcodecs.imdecode(new MatOfByte(imageBytes), Imgcodecs.IMREAD_UNCHANGED);
     }
 
@@ -45,13 +45,13 @@ public final class OpenCVUtils {
         return bufferedImage;
     }
 
-    public static Mat flipImageMat(Mat image) {
+    public static Mat flipMat(Mat image) {
         Mat flippedImage = new Mat();
         Core.flip(image, flippedImage, 1);
         return flippedImage;
     }
 
-    public static Mat resizeImageMat(Mat image, int width, int height){
+    public static Mat resizeMat(Mat image, int width, int height){
         Size imgDim = image.size();
         Size dim = null;
         double r = 1;
@@ -73,14 +73,31 @@ public final class OpenCVUtils {
         return resized;
     }
 
-    public static Rect[] detectFeatures (Mat image, CascadeClassifier classifier) {
+    public static MatOfRect detectFeatures(Mat image, CascadeClassifier classifier) {
         MatOfRect features = new MatOfRect();
         classifier.detectMultiScale(image, features);
-        return features.toArray();
+        return features;
     }
 
-    public static Rect detectBiggestFeature(Mat image, CascadeClassifier classifier) {
-        Rect[] features = detectFeatures(image, classifier);
+    public static Mat detectBiggestMat(Mat image, CascadeClassifier classifier) {
+        MatOfRect features = detectFeatures(image, classifier);
+        Rect biggestFeature = null;
+        double biggestFeatureArea = 0.0;
+        for (Rect feature : features.toArray()) {
+            if (biggestFeature == null || feature.area() > biggestFeatureArea) {
+                biggestFeature = feature;
+                biggestFeatureArea = biggestFeature.area();
+            }
+        }
+        return image.submat(biggestFeature);
+    }
+
+    public static Rect[] detectFeatureRects(Mat image, CascadeClassifier classifier) {
+        return detectFeatures(image, classifier).toArray();
+    }
+
+    public static Rect detectBiggestFeatureRect(Mat image, CascadeClassifier classifier) {
+        Rect[] features = detectFeatureRects(image, classifier);
         Rect biggestFeature = null;
         double biggestFeatureArea = 0.0;
         for (Rect feature : features) {
@@ -92,24 +109,24 @@ public final class OpenCVUtils {
         return biggestFeature;
     }
 
-    public static void drawFeatures (Mat image, Rect[] features, Color color) {
+    public static void drawRects(Mat image, Rect[] features, Color color) {
         for (Rect feature : features) {
-            drawFeature(image, feature, color);
+            drawRect(image, feature, color);
         }
     }
 
-    public static void drawFeature (Mat image, Rect feature, Color color) {
+    public static void drawRect(Mat image, Rect feature, Color color) {
         Imgproc.rectangle(image, new Point(feature.x, feature.y), new Point(feature.x + feature.width, feature.y + feature.height), new Scalar(color.getBlue(), color.getGreen(), color.getRed()),3);
     }
 
-    public static boolean featureContains(Rect feature, Rect innerFeature) {
+    public static boolean containsRect(Rect feature, Rect innerFeature) {
         return feature.contains(innerFeature.tl()) && feature.contains(innerFeature.br());
     }
 
-    public static boolean featureContainsAny(Rect feature, Rect[] innerFeatures) {
+    public static boolean containerAnyRect(Rect feature, Rect[] innerFeatures) {
         boolean contains = false;
         for (Rect innerFeature : innerFeatures) {
-            if (featureContains(feature, innerFeature)) {
+            if (containsRect(feature, innerFeature)) {
                 contains = true;
                 break;
             }
@@ -117,11 +134,11 @@ public final class OpenCVUtils {
         return contains;
     }
 
-    public static void displayImage(Mat image) {
-        displayImage(image, "Image");
+    public static void displayMat(Mat image) {
+        displayMat(image, "Image");
     }
 
-    public static void displayImage(Mat image, String label) {
+    public static void displayMat(Mat image, String label) {
         Image bufferedImage = getBufferedImage(image);
         ImageIcon icon = new ImageIcon(bufferedImage);
         JFrame frame = new JFrame(label);
