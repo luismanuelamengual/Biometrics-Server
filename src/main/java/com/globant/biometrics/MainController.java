@@ -12,6 +12,8 @@ import org.neogroup.warp.controllers.routing.*;
 import org.neogroup.warp.data.Data;
 import org.neogroup.warp.data.DataObject;
 
+import java.lang.reflect.InvocationTargetException;
+
 import static org.neogroup.warp.Warp.getProperty;
 
 @ControllerComponent
@@ -56,7 +58,9 @@ public class MainController {
 
     @Error("*")
     public DataObject errorHandler(Throwable exception) {
-        exception.printStackTrace();
+        while (exception instanceof InvocationTargetException) {
+            exception = ((InvocationTargetException) exception).getTargetException();
+        }
         DataObject result = Data.object();
         result.set("success", false);
         result.set("message", exception.getMessage());

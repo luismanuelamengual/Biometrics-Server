@@ -119,6 +119,10 @@ public final class OpenCVUtils {
         return contains;
     }
 
+    public static void displayImage(Mat image) {
+        displayImage(image, "Image");
+    }
+
     public static void displayImage(Mat image, String label) {
         Image bufferedImage = getBufferedImage(image);
         ImageIcon icon = new ImageIcon(bufferedImage);
