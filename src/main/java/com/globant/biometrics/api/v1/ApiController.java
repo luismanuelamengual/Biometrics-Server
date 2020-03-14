@@ -15,13 +15,15 @@ import org.neogroup.warp.controllers.routing.Parameter;
 import org.neogroup.warp.controllers.routing.Post;
 import org.neogroup.warp.data.Data;
 import org.neogroup.warp.data.DataObject;
-import org.opencv.core.Mat;
-import org.opencv.core.Rect;
+import org.opencv.core.*;
+import org.opencv.core.Point;
+import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -252,7 +254,7 @@ public class ApiController {
 
     private String getMRZCodeFromImage (byte[] image) throws Exception {
         String mrzCode = null;
-        Mat mrzMat = OpenCVUtils.detectMRZ(OpenCVUtils.getImageMat(image));
+        Mat mrzMat = detectMRZ(OpenCVUtils.getImageMat(image));
         if (mrzMat != null) {
             Image mrzImage = OpenCVUtils.getBufferedImage(mrzMat);
             mrzCode = tesseract.doOCR((BufferedImage)mrzImage);
@@ -293,5 +295,64 @@ public class ApiController {
             }
         } catch (Exception ex) {}
         return similarity;
+    }
+
+    private Mat detectMRZ(Mat img) {
+        Mat roi = null;
+        Mat rectKernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(13,5));
+        Mat sqKernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(21,21));
+
+        if (img.width() > 800) {
+            img = OpenCVUtils.resizeImageMat(img, 800, img.height() * 800 / img.width());
+        }
+        if (img.height() > 600) {
+            img = OpenCVUtils.resizeImageMat(img, img.width() * 600 / img.height(), 600);
+        }
+        Mat gray = new Mat();
+        Imgproc.cvtColor(img, gray, Imgproc.COLOR_BGR2GRAY);
+        Imgproc.GaussianBlur(gray, gray, new Size(3, 3), 0);
+        Mat blackhat = new Mat();
+        Imgproc.morphologyEx(gray, blackhat, Imgproc.MORPH_BLACKHAT, rectKernel);
+        Mat gradX = new Mat();
+        Imgproc.Sobel(blackhat, gradX, CvType.CV_32F, 1, 0, -1, 1, 0);
+        Core.MinMaxLocResult minMaxVal = Core.minMaxLoc(gradX);
+        gradX.convertTo(gradX,CvType.CV_8U,255.0/(minMaxVal.maxVal-minMaxVal.minVal),-255.0/minMaxVal.minVal);
+        Imgproc.morphologyEx(gradX, gradX, Imgproc.MORPH_CLOSE, rectKernel);
+        Mat thresh = new Mat();
+        Imgproc.threshold(gradX, thresh, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+        Imgproc.morphologyEx(thresh, thresh, Imgproc.MORPH_CLOSE, sqKernel);
+        Imgproc.erode(thresh, thresh, new Mat(), new org.opencv.core.Point(-1,-1), 4);
+        int pRows = (int)(img.rows() * 0.05);
+        int pCols = (int)(img.cols() * 0.05);
+        for (int i=0; i <= thresh.rows(); i++)
+            for (int j=0; j<=pCols; j++)
+                thresh.put(i, j, 0);
+        for (int i=0; i <= thresh.rows(); i++)
+            for (int j=img.cols()-pCols; j<=img.cols(); j++)
+                thresh.put(i, j, 0);
+        List<MatOfPoint> cnts = new ArrayList<>();
+        Imgproc.findContours(thresh.clone(), cnts, new Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+        for (MatOfPoint c : cnts) {
+            Rect bRect = Imgproc.boundingRect(c);
+            int x=bRect.x;
+            int y=bRect.y;
+            int w=bRect.width;
+            int h=bRect.height;
+            int grWidth = gray.width();
+            float ar = (float)w / (float)h;
+            float crWidth = (float)w / (float)grWidth;
+            if (ar > 4 && crWidth > 0.75){
+                int pX = (int)((x + w) * 0.03);
+                int pY = (int)((y + h) * 0.03);
+                x = x - pX;
+                y = y - pY;
+                w = w + (pX * 2);
+                h = h + (pY * 2);
+                roi = new Mat(img, new Rect(x, y, w, h));
+                Imgproc.rectangle(img, new org.opencv.core.Point(x, y), new Point(x + w, y + h), new Scalar(0, 255, 0), 2);
+                break;
+            }
+        }
+        return roi;
     }
 }
