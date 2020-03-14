@@ -1,8 +1,12 @@
 package com.globant.biometrics.api.v1;
 
+import com.amazonaws.services.rekognition.AmazonRekognition;
+import com.amazonaws.services.rekognition.AmazonRekognitionClientBuilder;
+import com.amazonaws.services.rekognition.model.CompareFacesMatch;
+import com.amazonaws.services.rekognition.model.CompareFacesRequest;
+import com.amazonaws.services.rekognition.model.CompareFacesResult;
 import com.dynamsoft.barcode.BarcodeReader;
 import com.dynamsoft.barcode.TextResult;
-import com.globant.biometrics.utils.AmazonUtils;
 import com.globant.biometrics.utils.OpenCVUtils;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.util.LoadLibs;
@@ -17,7 +21,9 @@ import org.opencv.objdetect.CascadeClassifier;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @ControllerComponent("v1")
@@ -39,12 +45,14 @@ public class ApiController {
     private CascadeClassifier eyeClassifier;
     private CascadeClassifier eyePairClassifier;
     private Tesseract tesseract;
+    private AmazonRekognition rekognitionClient;
 
     public ApiController() {
         faceClassfier = OpenCVUtils.getClassfierFromResource("cascades/face.xml");
         profileFaceClassifier = OpenCVUtils.getClassfierFromResource("cascades/profile-face.xml");
         eyeClassifier = OpenCVUtils.getClassfierFromResource("cascades/eye.xml");
         eyePairClassifier = OpenCVUtils.getClassfierFromResource("cascades/eye-pair.xml");
+        rekognitionClient = AmazonRekognitionClientBuilder.defaultClient();
         tesseract = new Tesseract();
         tesseract.setDatapath(LoadLibs.extractTessResources("tessdata").getAbsolutePath());
         tesseract.setLanguage("spa");
@@ -149,12 +157,12 @@ public class ApiController {
     public DataObject verifyIdentity(@Parameter("selfie") byte[] selfie, @Parameter("documentFront") byte[] documentFront, @Parameter("documentBack") byte[] documentBack) {
         boolean match = false;
         float similarity = 0;
-        similarity = AmazonUtils.compareFacesInImages (selfie, documentFront);
+        similarity = compareFacesInImages (selfie, documentFront);
         if (similarity > 0) {
             match = true;
         }
         if (!match) {
-            similarity = AmazonUtils.compareFacesInImages (selfie, documentBack);
+            similarity = compareFacesInImages (selfie, documentBack);
             if (similarity > 0) {
                 match = true;
             }
@@ -228,7 +236,7 @@ public class ApiController {
         return documentData;
     }
 
-    public String formatName(final String text) {
+    private String formatName(final String text) {
         char[] chars = text.toLowerCase().toCharArray();
         boolean found = false;
         for (int i = 0; i < chars.length; i++) {
@@ -255,7 +263,7 @@ public class ApiController {
         return mrzCode;
     }
 
-    public static String getPDF417CodeImage(byte[] imageBytes) throws Exception {
+    private String getPDF417CodeImage(byte[] imageBytes) throws Exception {
         String pdf417Code = null;
         BarcodeReader dbr = new BarcodeReader();
         TextResult[] result = dbr.decodeFileInMemory(imageBytes, "");
@@ -267,5 +275,23 @@ public class ApiController {
             }
         }
         return pdf417Code;
+    }
+
+    private float compareFacesInImages (byte[] image1Bytes, byte[] image2Bytes) {
+        com.amazonaws.services.rekognition.model.Image image1 = new com.amazonaws.services.rekognition.model.Image().withBytes(ByteBuffer.wrap(image1Bytes));;
+        com.amazonaws.services.rekognition.model.Image image2 = new com.amazonaws.services.rekognition.model.Image().withBytes(ByteBuffer.wrap(image2Bytes));;
+        CompareFacesRequest request = new CompareFacesRequest().withSourceImage(image1).withTargetImage(image2).withSimilarityThreshold(70F);
+        float similarity = 0;
+        try {
+            CompareFacesResult compareFacesResult = rekognitionClient.compareFaces(request);
+            List<CompareFacesMatch> comparissonResults = compareFacesResult.getFaceMatches();
+            if (comparissonResults != null) {
+                for (CompareFacesMatch comparissonResult : comparissonResults) {
+                    similarity = comparissonResult.getSimilarity();
+                    break;
+                }
+            }
+        } catch (Exception ex) {}
+        return similarity;
     }
 }
