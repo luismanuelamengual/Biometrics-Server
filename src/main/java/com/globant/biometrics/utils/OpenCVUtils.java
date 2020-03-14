@@ -13,6 +13,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Arrays;
 
 public final class OpenCVUtils {
 
@@ -151,6 +152,74 @@ public final class OpenCVUtils {
         frame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
     }
 
+    public static Mat enhanceMat(Mat src, double clipPercentage){
+        int histSize = 256;
+        double alpha, beta;
+        double minGray, maxGray;
+
+        Mat gray = null;
+        if(src.type() == CvType.CV_8UC1){
+            gray = src.clone();
+        }
+        else{
+            gray = new Mat();
+            Imgproc.cvtColor(src, gray, src.type() == CvType.CV_8UC3? Imgproc.COLOR_RGB2GRAY:Imgproc.COLOR_RGBA2GRAY);
+        }
+
+        if(clipPercentage == 0) {
+            Core.MinMaxLocResult minMaxGray = Core.minMaxLoc(gray);
+            minGray = minMaxGray.minVal;
+            maxGray = minMaxGray.maxVal;
+        }
+        else{
+            Mat hist = new Mat();
+            MatOfInt size = new MatOfInt(histSize);
+            MatOfInt channels = new MatOfInt(0);
+            MatOfFloat ranges = new MatOfFloat(0, 256);
+            Imgproc.calcHist(Arrays.asList(gray), channels, new Mat(), hist, size, ranges, false);
+            gray.release();
+
+            double[] accumulator = new double[histSize];
+
+            accumulator[0] = hist.get(0, 0)[0];
+            for(int i = 1; i < histSize; i++){
+                accumulator[i] = accumulator[i - 1] + hist.get(i, 0)[0];
+            }
+
+            hist.release();
+
+            double max = accumulator[accumulator.length - 1];
+            clipPercentage = (clipPercentage * (max/100.0));
+            clipPercentage = clipPercentage / 2.0f;
+
+            minGray = 0;
+            while (minGray < histSize && accumulator[(int) minGray] < clipPercentage){
+                minGray++;
+            }
+
+            maxGray = histSize - 1;
+            while (maxGray >= 0 && accumulator[(int) maxGray] >= (max - clipPercentage)){
+                maxGray--;
+            }
+        }
+
+        double inputRange = maxGray - minGray;
+        alpha = (histSize - 1)/inputRange;
+        beta = -minGray * alpha;
+        Mat result = new Mat();
+        src.convertTo(result, -1, alpha, beta);
+        if(result.type() == CvType.CV_8UC4){
+            Core.mixChannels(Arrays.asList(src), Arrays.asList(result), new MatOfInt(3, 3));
+        }
+        return result;
+    }
+
+    public static Mat sharpenMat(Mat src){
+        Mat sharped = new Mat();
+        Imgproc.GaussianBlur(src, sharped, new Size(0, 0), 3);
+        Core.addWeighted(src, 1.5, sharped, -0.5, 0, sharped);
+        return sharped;
+    }
 
     public static CascadeClassifier getClassfierFromResource(String resourceName) {
         CascadeClassifier classifier = null;
