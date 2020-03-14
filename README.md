@@ -1,19 +1,5 @@
 # Biometrics-Server
 
-## Sending Requests
-
-Add the follwing header for requests
-
-<pre>
-Authorization: Bearer {api key}
-</pre>
-
-Use the following api Key for test purposes
-
-<pre>
-eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJhdXRoMCIsImNsaWVudCI6InRlc3QifQ.5SY_UQaaILYpryU0qNBuPrPTPkF79UhTCNFElXjzUyY
-</pre>
-
 ## Configuring OpenCV
 
 Download openCV library (version 4.1.2) from the following link
@@ -52,18 +38,71 @@ Djava.library.path=~/opencv/build/lib
 
 ## Configuring Amazon
 
-1. Create a folder .aws in the home directory
-2. Create a file "config" in .aws folder with the following content
+Create a folder .aws in the home directory
+Create a file "config" in .aws folder with the following content
    
 <pre>
    [default]
    region = us-west-2
 </pre>
 
-3. Create a file "credentials" in .aws folder with the following content
+Create a file "credentials" in .aws folder with the following content
 
 <pre>
     [default]
     aws_access_key_id = {access_key_id}
     aws_secret_access_key = {secrect_access_key}
+</pre>
+
+## Deploying to server
+
+Compile application
+
+<pre>
+    mvn clean
+    mvn package
+</pre>
+
+Copy .jar to server
+
+<pre>
+    scp -r ./Biometrics-Server.jar luis.amengual@server-host:~/
+</pre>
+
+Copy Dockerfile to server
+
+<pre>
+    scp Dockerfile luis.amengual@server-host:~/
+</pre>
+
+Login in server
+
+<pre>
+    ssh luis.amengual@server-host
+</pre>
+
+Create the docker image
+
+<pre>
+    docker build -t biometrics .
+</pre> 
+
+Run the docker image
+
+<pre>
+    docker run -it -d -p 8080:8080 --rm biometrics
+</pre>
+
+## Sending Requests
+
+Add the follwing header for requests
+
+<pre>
+Authorization: Bearer {api key}
+</pre>
+
+Use the following api Key for test purposes
+
+<pre>
+eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJhdXRoMCIsImNsaWVudCI6InRlc3QifQ.5SY_UQaaILYpryU0qNBuPrPTPkF79UhTCNFElXjzUyY
 </pre>
