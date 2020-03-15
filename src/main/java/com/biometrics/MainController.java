@@ -19,17 +19,19 @@ import static org.neogroup.warp.Warp.getProperty;
 @ControllerComponent
 public class MainController {
 
+    private static final String BIOMETRICS_JWT_SECRET_KEY_PROPERTY_NAME = "com.biometrics.jwt.secret_key";
+
     private JWTVerifier jwtVerifier;
 
     public MainController() {
-        String secretKey = getProperty("jwt_secret_key");
+        String secretKey = getProperty(BIOMETRICS_JWT_SECRET_KEY_PROPERTY_NAME);
         Algorithm algorithm = Algorithm.HMAC256(secretKey);
         jwtVerifier = JWT.require(algorithm).withIssuer("auth0").build();
     }
 
     @Get("session")
     public String createSession(@Parameter("client") String clientName) throws Exception {
-        String secretKey = getProperty("jwt_secret_key");
+        String secretKey = getProperty(BIOMETRICS_JWT_SECRET_KEY_PROPERTY_NAME);
         Algorithm algorithm = Algorithm.HMAC256(secretKey);
         return JWT.create().withIssuer("auth0").withClaim("client", clientName).sign(algorithm);
     }
