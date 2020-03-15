@@ -1,4 +1,4 @@
-package com.globant.biometrics;
+package com.biometrics;
 
 import org.neogroup.warp.WarpApplication;
 import org.opencv.core.Core;

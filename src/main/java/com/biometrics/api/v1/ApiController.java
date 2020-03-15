@@ -1,13 +1,13 @@
-package com.globant.biometrics.api.v1;
+package com.biometrics.api.v1;
 
 import com.amazonaws.services.rekognition.AmazonRekognition;
 import com.amazonaws.services.rekognition.AmazonRekognitionClientBuilder;
 import com.amazonaws.services.rekognition.model.CompareFacesMatch;
 import com.amazonaws.services.rekognition.model.CompareFacesRequest;
 import com.amazonaws.services.rekognition.model.CompareFacesResult;
+import com.biometrics.utils.OpenCVUtils;
 import com.dynamsoft.barcode.BarcodeReader;
 import com.dynamsoft.barcode.TextResult;
-import com.globant.biometrics.utils.OpenCVUtils;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.util.LoadLibs;
 import org.neogroup.warp.controllers.ControllerComponent;
@@ -15,8 +15,8 @@ import org.neogroup.warp.controllers.routing.Parameter;
 import org.neogroup.warp.controllers.routing.Post;
 import org.neogroup.warp.data.Data;
 import org.neogroup.warp.data.DataObject;
-import org.opencv.core.*;
 import org.opencv.core.Point;
+import org.opencv.core.*;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 
@@ -252,7 +252,7 @@ public class ApiController {
             if (!found && Character.isLetter(chars[i])) {
                 chars[i] = Character.toUpperCase(chars[i]);
                 found = true;
-            } else if (Character.isWhitespace(chars[i]) || chars[i]=='.' || chars[i]=='\'') { // You can add other chars here
+            } else if (Character.isWhitespace(chars[i]) || chars[i]=='.' || chars[i]=='\'') {
                 found = false;
             }
         }

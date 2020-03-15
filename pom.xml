@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.globant.macro</groupId>
+    <groupId>com.biometrics</groupId>
     <artifactId>Biometrics</artifactId>
     <version>1.0.2</version>
     <build>
@@ -28,7 +28,7 @@
                         <configuration>
                             <archive>
                                 <manifest>
-                                    <mainClass>com.globant.biometrics.Main</mainClass>
+                                    <mainClass>com.biometrics.Main</mainClass>
                                 </manifest>
                             </archive>
                             <descriptorRefs>
@@ -69,7 +69,7 @@
         <dependency>
             <groupId>com.github.luismanuelamengual</groupId>
             <artifactId>NeoGroup-Warp</artifactId>
-            <version>1.0.14</version>
+            <version>1.1.1</version>
         </dependency>
 
         <!-- JWT -->
