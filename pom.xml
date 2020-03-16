@@ -6,7 +6,7 @@
 
     <groupId>com.biometrics</groupId>
     <artifactId>Biometrics</artifactId>
-    <version>1.0.2</version>
+    <version>1.0.4</version>
     <build>
         <plugins>
             <plugin>
