@@ -60,6 +60,7 @@ public class MainController {
 
     @Error("*")
     public DataObject errorHandler(Throwable exception) {
+        exception.printStackTrace();
         while (exception instanceof InvocationTargetException) {
             exception = ((InvocationTargetException) exception).getTargetException();
         }

@@ -1,5 +1,33 @@
 # Biometrics-Server
 
+## Building base image
+
+Start from scratch ubuntu:latest image
+
+<pre>
+docker run -it --name biometrics-base ubuntu:latest
+</pre>
+
+Install java13, OpenCV, Amazon, Tesseract
+
+Upload the server image
+
+<pre>
+docker login -u "{username}" -p "{password}" docker.io
+docker commit 66894d551112 baseimage:latest
+docker tag baseimage:latest luismanuelamengual/baseimage:1.0.0
+docker push probablynotian/baseimage:1.0.0
+</pre>
+
+Upload a new version of the server image
+<pre>
+docker login -u "{username}" -p "{password}" docker.io
+docker commit 22e7e0739cdd luismanuelamengual/biometrics-base:latest
+docker tag luismanuelamengual/baseimage:latest luismanuelamengual/baseimage:1.0.1
+docker push luismanuelamengual/baseimage:1.0.1
+</pre>
+
+
 ## Configuring OpenCV
 
 Download openCV library (version 4.1.2) from the following link
@@ -52,6 +80,12 @@ Create a file "credentials" in .aws folder with the following content
     [default]
     aws_access_key_id = {access_key_id}
     aws_secret_access_key = {secrect_access_key}
+</pre>
+
+## Configuring Tesseract
+
+<pre>
+sudo apt install tesseract-ocr
 </pre>
 
 ## Deploying to server
