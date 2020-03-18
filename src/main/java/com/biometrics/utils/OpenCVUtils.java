@@ -13,7 +13,9 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public final class OpenCVUtils {
 
@@ -29,6 +31,10 @@ public final class OpenCVUtils {
         MatOfByte bytesMat = new MatOfByte();
         Imgcodecs.imencode(extension, image, bytesMat);
         return bytesMat.toArray();
+    }
+
+    public static Scalar getScalarFromColor (Color color) {
+        return new Scalar(color.getBlue(), color.getGreen(), color.getRed());
     }
 
     public static Image getBufferedImage(Mat image){
@@ -117,7 +123,13 @@ public final class OpenCVUtils {
     }
 
     public static void drawRect(Mat image, Rect feature, Color color) {
-        Imgproc.rectangle(image, new Point(feature.x, feature.y), new Point(feature.x + feature.width, feature.y + feature.height), new Scalar(color.getBlue(), color.getGreen(), color.getRed()),3);
+        Imgproc.rectangle(image, new Point(feature.x, feature.y), new Point(feature.x + feature.width, feature.y + feature.height), getScalarFromColor(color),3);
+    }
+
+    public static void drawContour(Mat image, MatOfPoint contour, Color color, boolean fill) {
+        List<MatOfPoint> tmp = new ArrayList<>();
+        tmp.add(contour);
+        Imgproc.drawContours(image, tmp, 0, getScalarFromColor(color), fill ? -1 : 1);
     }
 
     public static boolean containsRect(Rect feature, Rect innerFeature) {
@@ -133,6 +145,19 @@ public final class OpenCVUtils {
             }
         }
         return contains;
+    }
+
+    public static MatOfPoint getLargestContour(List<MatOfPoint> contours) {
+        MatOfPoint largestContour = null;
+        double largestContourPerimeter = 0;
+        for (MatOfPoint contour : contours) {
+            double contourPerimeter = Imgproc.arcLength(new MatOfPoint2f(contour.toArray()), true);
+            if (largestContour == null || contourPerimeter > largestContourPerimeter) {
+                largestContour = contour;
+                largestContourPerimeter = contourPerimeter;
+            }
+        }
+        return largestContour;
     }
 
     public static void displayMat(Mat image) {
