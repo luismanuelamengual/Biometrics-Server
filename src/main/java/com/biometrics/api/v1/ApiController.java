@@ -261,12 +261,15 @@ public class ApiController {
 
     private String getMRZCodeFromImage (byte[] image) throws Exception {
         String mrzCode = null;
-        Mat mrzMat = detectMRZ(OpenCVUtils.getMat(image));
+        Mat mrzMat = detectMrz(OpenCVUtils.getMat(image));
         if (mrzMat != null) {
             Image mrzImage = OpenCVUtils.getBufferedImage(mrzMat);
-            mrzCode = tesseract.doOCR((BufferedImage)mrzImage);
-            if (mrzCode != null && !mrzCode.isEmpty()) {
-                mrzCode = mrzCode.replaceAll("\n", "");
+            String mrzCodeTest = tesseract.doOCR((BufferedImage)mrzImage);
+            if (mrzCodeTest != null && !mrzCodeTest.isEmpty() && mrzCodeTest.length() > 40 && mrzCodeTest.indexOf("<<") > 0) {
+                mrzCodeTest = mrzCodeTest.replaceAll("\n", "");
+                //BUG Tesseract: Sometimes reads <0O< instead of <0<
+                mrzCodeTest = mrzCodeTest.replaceAll("<0O<", "<0<");
+                mrzCode = mrzCodeTest;
             }
         }
         return mrzCode;
@@ -304,62 +307,56 @@ public class ApiController {
         return similarity;
     }
 
-    private Mat detectMRZ(Mat img) {
-        Mat roi = null;
-        Mat rectKernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(13,5));
-        Mat sqKernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(21,21));
-
-        if (img.width() > 800) {
-            img = OpenCVUtils.resizeMat(img, 800, img.height() * 800 / img.width());
-        }
-        if (img.height() > 600) {
-            img = OpenCVUtils.resizeMat(img, img.width() * 600 / img.height(), 600);
-        }
+    public Mat detectMrz(Mat src){
+        Mat img = src.clone();
+        src.release();
+        double ratio = img.height() / 800.0;
+        int width = (int) (img.size().width / ratio);
+        int height = (int) (img.size().height / ratio);
+        Size newSize = new Size(width, height);
+        Mat resizedImg = new Mat(newSize, CvType.CV_8UC4);
+        Imgproc.resize(img, resizedImg, newSize);
         Mat gray = new Mat();
-        Imgproc.cvtColor(img, gray, Imgproc.COLOR_BGR2GRAY);
-        Imgproc.GaussianBlur(gray, gray, new Size(3, 3), 0);
-        Mat blackhat = new Mat();
-        Imgproc.morphologyEx(gray, blackhat, Imgproc.MORPH_BLACKHAT, rectKernel);
+        Imgproc.cvtColor(resizedImg, gray, Imgproc.COLOR_BGR2GRAY);
+        Imgproc.medianBlur(gray, gray, 3);
+        Mat morph = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(13, 5));
+        Mat dilatedImg = new Mat();
+        Imgproc.morphologyEx(gray, dilatedImg, Imgproc.MORPH_BLACKHAT, morph);
+        gray.release();
         Mat gradX = new Mat();
-        Imgproc.Sobel(blackhat, gradX, CvType.CV_32F, 1, 0, -1, 1, 0);
-        Core.MinMaxLocResult minMaxVal = Core.minMaxLoc(gradX);
-        gradX.convertTo(gradX,CvType.CV_8U,255.0/(minMaxVal.maxVal-minMaxVal.minVal),-255.0/minMaxVal.minVal);
-        Imgproc.morphologyEx(gradX, gradX, Imgproc.MORPH_CLOSE, rectKernel);
+        Imgproc.Sobel(dilatedImg, gradX, CvType.CV_32F, 1, 0);
+        dilatedImg.release();
+        Core.convertScaleAbs(gradX, gradX, 1, 0);
+        Core.MinMaxLocResult minMax = Core.minMaxLoc(gradX);
+        Core.convertScaleAbs(gradX, gradX, (255/(minMax.maxVal - minMax.minVal)), - ((minMax.minVal * 255) / (minMax.maxVal - minMax.minVal)));
+        Imgproc.morphologyEx(gradX, gradX, Imgproc.MORPH_CLOSE, morph);
         Mat thresh = new Mat();
-        Imgproc.threshold(gradX, thresh, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
-        Imgproc.morphologyEx(thresh, thresh, Imgproc.MORPH_CLOSE, sqKernel);
-        Imgproc.erode(thresh, thresh, new Mat(), new org.opencv.core.Point(-1,-1), 4);
-        int pRows = (int)(img.rows() * 0.05);
-        int pCols = (int)(img.cols() * 0.05);
-        for (int i=0; i <= thresh.rows(); i++)
-            for (int j=0; j<=pCols; j++)
+        Imgproc.threshold(gradX, thresh, 0, 255, Imgproc.THRESH_OTSU);
+        gradX.release();
+        morph.release();
+        morph = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(21, 21));
+        Imgproc.morphologyEx(thresh, thresh, Imgproc.MORPH_CLOSE, morph);
+        Imgproc.erode(thresh, thresh, new Mat(), new Point(-1, -1), 4);
+        morph.release();
+        int col = (int) resizedImg.size().width;
+        int p = (int) (resizedImg.size().width * 0.05);
+        int row = (int) resizedImg.size().height;
+        for(int i = 0; i < row; i++) {
+            for(int j = 0; j < p; j++) {
                 thresh.put(i, j, 0);
-        for (int i=0; i <= thresh.rows(); i++)
-            for (int j=img.cols()-pCols; j<=img.cols(); j++)
-                thresh.put(i, j, 0);
-        List<MatOfPoint> cnts = new ArrayList<>();
-        Imgproc.findContours(thresh.clone(), cnts, new Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
-        for (MatOfPoint c : cnts) {
-            Rect bRect = Imgproc.boundingRect(c);
-            int x=bRect.x;
-            int y=bRect.y;
-            int w=bRect.width;
-            int h=bRect.height;
-            int grWidth = gray.width();
-            float ar = (float)w / (float)h;
-            float crWidth = (float)w / (float)grWidth;
-            if (ar > 4 && crWidth > 0.75){
-                int pX = (int)((x + w) * 0.03);
-                int pY = (int)((y + h) * 0.03);
-                x = x - pX;
-                y = y - pY;
-                w = w + (pX * 2);
-                h = h + (pY * 2);
-                roi = new Mat(img, new Rect(x, y, w, h));
-                Imgproc.rectangle(img, new org.opencv.core.Point(x, y), new Point(x + w, y + h), new Scalar(0, 255, 0), 2);
-                break;
+                thresh.put(i, col-j, 0);
             }
         }
-        return roi;
+        Mat dilated_edges = new Mat();
+        Imgproc.dilate(thresh, dilated_edges, new Mat(), new Point(-1, -1), 16, 1, new Scalar(0,255,0));
+        List<MatOfPoint> contours = new ArrayList<>();
+        Mat hierarchy = new Mat();
+        Imgproc.findContours(dilated_edges, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+        hierarchy.release();
+        MatOfPoint contour = OpenCVUtils.getLargestContour(contours);
+        Rect rect = Imgproc.boundingRect(contour);
+        Mat roi = resizedImg.submat(rect);
+        double roiProportion = roi.width() > roi.height() ? (double)roi.width() / (double)roi.height() : (double)roi.height() / (double)roi.width();
+        return (roiProportion >= 4)? roi : null;
     }
 }
