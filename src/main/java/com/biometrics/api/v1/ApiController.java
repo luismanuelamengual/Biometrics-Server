@@ -42,6 +42,10 @@ public class ApiController {
     private static final String LEFT_PROFILE_FACE_INSTRUCTION = "left_profile_face";
     private static final String RIGHT_PROFILE_FACE_INSTRUCTION = "right_profile_face";
 
+    private static final String MATCH_PROPERTY_NAME = "match";
+    private static final String STATUS_PROPERTY_NAME = "status";
+    private static final String SIMILARITY_PROPERTY_NAME = "similarity";
+
     private static final String FIRST_NAME_PROPERTY_NAME = "firstName";
     private static final String LAST_NAME_PROPERTY_NAME = "lastName";
     private static final String BIRTH_DATE_PROPERTY_NAME = "birthDate";
@@ -158,8 +162,8 @@ public class ApiController {
         }
 
         return Data.object()
-            .set("match", status == FACE_MATCH_SUCCESS_STATUS_CODE)
-            .set("status", status);
+            .set(MATCH_PROPERTY_NAME, status == FACE_MATCH_SUCCESS_STATUS_CODE)
+            .set(STATUS_PROPERTY_NAME, status);
     }
 
     @Post("verify_identity")
@@ -184,8 +188,8 @@ public class ApiController {
             match = true;
         }
         return Data.object()
-            .set("match", match)
-            .set("similarity", similarity);
+            .set(MATCH_PROPERTY_NAME, match)
+            .set(SIMILARITY_PROPERTY_NAME, similarity);
     }
 
     @Post("scan_document_data")
