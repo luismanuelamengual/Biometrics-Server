@@ -42,6 +42,13 @@ public class ApiController {
     private static final String LEFT_PROFILE_FACE_INSTRUCTION = "left_profile_face";
     private static final String RIGHT_PROFILE_FACE_INSTRUCTION = "right_profile_face";
 
+    private static final String FIRST_NAME_PROPERTY_NAME = "firstName";
+    private static final String LAST_NAME_PROPERTY_NAME = "lastName";
+    private static final String BIRTH_DATE_PROPERTY_NAME = "birthDate";
+    private static final String GENDER_PROPERTY_NAME = "gender";
+    private static final String DOCUMENT_NUMBER_PROPERTY_NAME = "documentNumber";
+    private static final String NATIONAL_IDENTFICATION_NUMBER_PROPERTY_NAME = "nationalIdentificationNumber";
+
     private CascadeClassifier faceClassfier;
     private CascadeClassifier profileFaceClassifier;
     private CascadeClassifier eyeClassifier;
@@ -220,12 +227,12 @@ public class ApiController {
     private Map<String,String> getDocumentDataFromPDF417Code (String pdf317Code) {
         String[] dataTokens = pdf317Code.split("@");
         Map<String,String> documentData = new HashMap<>();
-        documentData.put("firstName", formatName(dataTokens[2]));
-        documentData.put("lastName", formatName(dataTokens[1]));
-        documentData.put("documentNumber", dataTokens[4]);
-        documentData.put("gender", dataTokens[3]);
-        documentData.put("birthDate", dataTokens[6]); // TODO homogeneizar birthDate (timestamp?)
-        documentData.put("nationalIdentificationNumber", dataTokens[0]);
+        documentData.put(FIRST_NAME_PROPERTY_NAME, formatName(dataTokens[2]));
+        documentData.put(LAST_NAME_PROPERTY_NAME, formatName(dataTokens[1]));
+        documentData.put(DOCUMENT_NUMBER_PROPERTY_NAME, dataTokens[4]);
+        documentData.put(GENDER_PROPERTY_NAME, dataTokens[3]);
+        documentData.put(BIRTH_DATE_PROPERTY_NAME, dataTokens[6]); // TODO homogeneizar birthDate (timestamp?)
+        documentData.put(NATIONAL_IDENTFICATION_NUMBER_PROPERTY_NAME, dataTokens[0]);
         return documentData;
     }
 
@@ -235,12 +242,12 @@ public class ApiController {
             String section1 = mrzCode.substring(0, 30);
             String section2 = mrzCode.substring(30, 60);
             String section3 = mrzCode.substring(60, 90);
-            documentData.put("documentNumber", section1.substring(5, section1.indexOf("<")));
-            documentData.put("birthDate", section2.substring(0, 6)); // TODO homogeneizar birthDate (timestamp?)
-            documentData.put("gender", section2.substring(7, 8));
+            documentData.put(DOCUMENT_NUMBER_PROPERTY_NAME, section1.substring(5, section1.indexOf("<")));
+            documentData.put(BIRTH_DATE_PROPERTY_NAME, section2.substring(0, 6)); // TODO homogeneizar birthDate (timestamp?)
+            documentData.put(GENDER_PROPERTY_NAME, section2.substring(7, 8));
             String[] name = section3.split("<<");
-            documentData.put("lastName", formatName(name[0].replace("<", " ")));
-            documentData.put("firstName", formatName(name[1].replace("<", " ")));
+            documentData.put(LAST_NAME_PROPERTY_NAME, formatName(name[0].replace("<", " ")));
+            documentData.put(FIRST_NAME_PROPERTY_NAME, formatName(name[1].replace("<", " ")));
         }
         return documentData;
     }
