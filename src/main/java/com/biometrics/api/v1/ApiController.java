@@ -45,6 +45,9 @@ public class ApiController {
     private static final String MATCH_PROPERTY_NAME = "match";
     private static final String STATUS_PROPERTY_NAME = "status";
     private static final String SIMILARITY_PROPERTY_NAME = "similarity";
+    private static final String TYPE_PROPERTY_NAME = "type";
+    private static final String RAW_PROPERTY_NAME = "raw";
+    private static final String INFORMATION_PROPERTY_NAME = "information";
 
     private static final String FIRST_NAME_PROPERTY_NAME = "firstName";
     private static final String LAST_NAME_PROPERTY_NAME = "lastName";
@@ -203,9 +206,9 @@ public class ApiController {
 
         if (pdf417RawText != null) {
             response = Data.object()
-                .set("type", "PDF417")
-                .set("raw", pdf417RawText)
-                .set("information", getDocumentDataFromPDF417Code(pdf417RawText));
+                .set(TYPE_PROPERTY_NAME, "PDF417")
+                .set(RAW_PROPERTY_NAME, pdf417RawText)
+                .set(INFORMATION_PROPERTY_NAME, getDocumentDataFromPDF417Code(pdf417RawText));
         }
 
         if (response == null) {
@@ -216,9 +219,9 @@ public class ApiController {
 
             if (mrzRawText != null) {
                 response = Data.object()
-                    .set("type", "MRZ")
-                    .set("raw", mrzRawText)
-                    .set("information", getDocumentDataFromMRZCode(mrzRawText));
+                    .set(TYPE_PROPERTY_NAME, "MRZ")
+                    .set(RAW_PROPERTY_NAME, mrzRawText)
+                    .set(INFORMATION_PROPERTY_NAME, getDocumentDataFromMRZCode(mrzRawText));
             }
         }
 
