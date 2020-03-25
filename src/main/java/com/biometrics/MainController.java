@@ -19,7 +19,7 @@ import static org.neogroup.warp.Warp.getProperty;
 @ControllerComponent
 public class MainController {
 
-    private static final String BIOMETRICS_JWT_SECRET_KEY_PROPERTY_NAME = "com.biometrics.jwt.secret_key";
+    private static final String BIOMETRICS_JWT_SECRET_KEY_PROPERTY_NAME = "api_key_secret_key";
 
     private JWTVerifier jwtVerifier;
 
