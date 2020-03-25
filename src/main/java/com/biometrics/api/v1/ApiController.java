@@ -199,9 +199,9 @@ public class ApiController {
     public DataObject scanDocument(@Parameter("documentFront") byte[] documentFront, @Parameter("documentBack") byte[] documentBack) throws Exception {
 
         DataObject response = null;
-        String pdf417RawText = getPDF417CodeImage(documentFront);
+        String pdf417RawText = getPDF417CodeFromImage(documentFront);
         if (pdf417RawText == null) {
-            pdf417RawText = getPDF417CodeImage(documentBack);
+            pdf417RawText = getPDF417CodeFromImage(documentBack);
         }
 
         if (pdf417RawText != null) {
@@ -289,7 +289,7 @@ public class ApiController {
         return mrzCode;
     }
 
-    private String getPDF417CodeImage(byte[] imageBytes) throws Exception {
+    private String getPDF417CodeFromImage(byte[] imageBytes) throws Exception {
         String pdf417Code = null;
         BarcodeReader dbr = new BarcodeReader();
         TextResult[] result = dbr.decodeFileInMemory(imageBytes, "");

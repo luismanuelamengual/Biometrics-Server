@@ -49,6 +49,10 @@ public class MainController {
             response.setStatus(401);
             throw new RuntimeException("Authorization header is expecting a JWT token");
         }
+        if (authorizationTokens.length < 2) {
+            response.setStatus(401);
+            throw new RuntimeException("Invalid authorization header");
+        }
         String token = authorizationTokens[1];
         try {
             jwtVerifier.verify(token);
@@ -72,7 +76,6 @@ public class MainController {
 
     @After("*")
     public DataObject handleResponse (Response response) {
-        response.addHeader("Access-Control-Allow-Origin", "*");
         DataObject result = Data.object();
         result.set("success", true);
         Object responseObject = response.getResponseObject();
