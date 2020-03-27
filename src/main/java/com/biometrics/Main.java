@@ -9,8 +9,7 @@ public class Main {
 
     public static void main(String[] args) {
         initializeOpenCV();
-        WarpApplication application = new WarpApplication(8080);
-        application.setSslEnabled(true);
+        WarpApplication application = new WarpApplication(8080, true);
         application.start();
     }
 
