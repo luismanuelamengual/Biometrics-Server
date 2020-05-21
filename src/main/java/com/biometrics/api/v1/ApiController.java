@@ -145,18 +145,27 @@ public class ApiController {
             if (xDifferential > xDifferentialLimit || yDifferential > yDifferentialLimit) {
                 status = FACE_NOT_CENTERED_STATUS_CODE;
             } else {
-                switch (instruction) {
-                    case FRONTAL_FACE_INSTRUCTION:
-                    case LEFT_PROFILE_FACE_INSTRUCTION:
-                    case RIGHT_PROFILE_FACE_INSTRUCTION:
-                        if (instruction.equals(faceInstruction)) {
-                            status = FACE_MATCH_SUCCESS_STATUS_CODE;
-                        } else {
+                double xRatio = faceRect.width / (double)imageWidth;
+                double yRatio = faceRect.height / (double)imageHeight;
+                double ratio = Math.max(xRatio, yRatio);
+                if (ratio < 0.5) {
+                    status = FACE_TOO_FAR_AWAY_STATUS_CODE;
+                } else if (ratio > 0.7) {
+                    status = FACE_TOO_CLOSE_STATUS_CODE;
+                } else {
+                    switch (instruction) {
+                        case FRONTAL_FACE_INSTRUCTION:
+                        case LEFT_PROFILE_FACE_INSTRUCTION:
+                        case RIGHT_PROFILE_FACE_INSTRUCTION:
+                            if (instruction.equals(faceInstruction)) {
+                                status = FACE_MATCH_SUCCESS_STATUS_CODE;
+                            } else {
+                                status = FACE_WITH_INCORRECT_GESTURE_STATUS_CODE;
+                            }
+                            break;
+                        default:
                             status = FACE_WITH_INCORRECT_GESTURE_STATUS_CODE;
-                        }
-                        break;
-                    default:
-                        status = FACE_WITH_INCORRECT_GESTURE_STATUS_CODE;
+                    }
                 }
             }
         }
