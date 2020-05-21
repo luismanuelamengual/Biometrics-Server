@@ -1,11 +1,19 @@
 package com.biometrics.utils;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class MRZParser {
 
     private static int[] MRZ_WEIGHTS = {7, 3, 1};
+    private static int CURRENT_YEAR_VALUE;
+    private static int CURRENT_YEAR_CENTURY;
+    private static TimeZone GMT_TIME_ZONE = TimeZone.getTimeZone("GMT");
+
+    static {
+        int currentYear = Calendar.getInstance().get(Calendar.YEAR);
+        MRZParser.CURRENT_YEAR_VALUE = currentYear % 100;
+        MRZParser.CURRENT_YEAR_CENTURY = currentYear - CURRENT_YEAR_VALUE;
+    }
 
     public static Map<String, Object> parseCode(String mrzCode) {
         Map<String, Object> documentData = null;
@@ -46,7 +54,7 @@ public class MRZParser {
             documentData = new HashMap<>();
             documentData.put(Document.DOCUMENT_NUMBER_FIELD, formatDocumentNumber(documentField));
             documentData.put(Document.BIRTH_DATE_FIELD, formatDate(birthDateField));
-            documentData.put(Document.EXPIRATION_DATE_FIELD, formatDate(expirationDateField));
+            documentData.put(Document.EXPIRATION_DATE_FIELD, formatDate(expirationDateField, true));
             documentData.put(Document.GENDER_PROPERTY_FIELD, genderField);
             documentData.put(Document.FIRST_NAME_FIELD, formatName(firstNameField));
             documentData.put(Document.LAST_NAME_FIELD, formatName(lastNameField));
@@ -97,7 +105,17 @@ public class MRZParser {
         return String.valueOf(chars);
     }
 
-    private static int formatDate(final String text) {
-        return 0;
+    private static long formatDate(final String text) {
+        return formatDate(text, false);
+    }
+
+    private static long formatDate(final String text, final boolean acceptsFutureDates) {
+        int yearValue = Integer.parseInt(text.substring(0,2));
+        int year = (!acceptsFutureDates && yearValue > MRZParser.CURRENT_YEAR_VALUE ? (MRZParser.CURRENT_YEAR_CENTURY - 100) : MRZParser.CURRENT_YEAR_CENTURY) + yearValue;
+        int month = Integer.parseInt(text.substring(2,4)) - 1;
+        int dayOfMonth = Integer.parseInt(text.substring(4,6));
+        Calendar calendar = new GregorianCalendar(year, month, dayOfMonth);
+        calendar.setTimeZone(MRZParser.GMT_TIME_ZONE);
+        return calendar.getTimeInMillis();
     }
 }

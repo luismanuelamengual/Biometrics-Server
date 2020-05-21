@@ -39,7 +39,7 @@ public class PDF417Parser {
         return String.valueOf(chars);
     }
 
-    private static int formatDate(final String text) {
+    private static long formatDate(final String text) {
         return 0;
     }
 }
