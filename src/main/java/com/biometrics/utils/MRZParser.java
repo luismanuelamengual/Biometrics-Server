@@ -8,6 +8,7 @@ public class MRZParser {
     private static int CURRENT_YEAR_VALUE;
     private static int CURRENT_YEAR_CENTURY;
     private static TimeZone GMT_TIME_ZONE = TimeZone.getTimeZone("GMT");
+    private static String ID_ARG_PREFIX = "IDARG";
 
     static {
         int currentYear = Calendar.getInstance().get(Calendar.YEAR);
@@ -17,10 +18,10 @@ public class MRZParser {
 
     public static Map<String, Object> parseCode(String mrzCode) {
         Map<String, Object> documentData = null;
-        if (mrzCode.length() == 90) {
+        if (mrzCode.startsWith(ID_ARG_PREFIX) && mrzCode.length() > 80) {
             String section1 = mrzCode.substring(0, 30);
             String section2 = mrzCode.substring(30, 60);
-            String section3 = mrzCode.substring(60, 90);
+            String section3 = mrzCode.substring(60);
             int documentSeparatorIndex = section1.indexOf("<");
             String documentField = section1.substring(5, documentSeparatorIndex);
             char documentCheckSum = section1.charAt(documentSeparatorIndex+1);
