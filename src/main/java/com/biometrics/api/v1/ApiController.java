@@ -5,7 +5,9 @@ import com.amazonaws.services.rekognition.AmazonRekognitionClientBuilder;
 import com.amazonaws.services.rekognition.model.CompareFacesMatch;
 import com.amazonaws.services.rekognition.model.CompareFacesRequest;
 import com.amazonaws.services.rekognition.model.CompareFacesResult;
+import com.biometrics.utils.MRZParser;
 import com.biometrics.utils.OpenCVUtils;
+import com.biometrics.utils.PDF417Parser;
 import com.dynamsoft.barcode.BarcodeReader;
 import com.dynamsoft.barcode.TextResult;
 import net.sourceforge.tess4j.Tesseract;
@@ -24,7 +26,6 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -51,16 +52,6 @@ public class ApiController {
     private static final String TYPE_PROPERTY_NAME = "type";
     private static final String RAW_PROPERTY_NAME = "raw";
     private static final String INFORMATION_PROPERTY_NAME = "information";
-
-    private static final String FIRST_NAME_PROPERTY_NAME = "firstName";
-    private static final String LAST_NAME_PROPERTY_NAME = "lastName";
-    private static final String BIRTH_DATE_PROPERTY_NAME = "birthDate";
-    private static final String EXPIRATION_DATE_PROPERTY_NAME = "birthDate";
-    private static final String GENDER_PROPERTY_NAME = "gender";
-    private static final String DOCUMENT_NUMBER_PROPERTY_NAME = "documentNumber";
-    private static final String NATIONAL_IDENTFICATION_NUMBER_PROPERTY_NAME = "nationalIdentificationNumber";
-
-    private static int[] MRZ_WEIGHTS = {7, 3, 1};
 
     private CascadeClassifier faceClassfier;
     private CascadeClassifier profileFaceClassifier;
@@ -212,7 +203,7 @@ public class ApiController {
 
         if (pdf417RawText != null) {
             try {
-                Map<String,String> documentInformation = getDocumentDataFromPDF417Code(pdf417RawText);
+                Map<String, Object> documentInformation = PDF417Parser.parseCode(pdf417RawText);
                 response = Data.object()
                     .set(TYPE_PROPERTY_NAME, PDF417_TYPE)
                     .set(RAW_PROPERTY_NAME, pdf417RawText)
@@ -228,7 +219,7 @@ public class ApiController {
 
             if (mrzRawText != null) {
                 try {
-                    Map<String,String> documentInformation = getDocumentDataFromMRZCode(mrzRawText);
+                    Map<String, Object> documentInformation = MRZParser.parseCode(mrzRawText);
                     response = Data.object()
                         .set(TYPE_PROPERTY_NAME, MRZ_TYPE)
                         .set(RAW_PROPERTY_NAME, mrzRawText)
@@ -241,79 +232,6 @@ public class ApiController {
             throw new RuntimeException("Document data could not be read");
         }
         return response;
-    }
-
-    private Map<String,String> getDocumentDataFromPDF417Code (String pdf317Code) {
-        String[] dataTokens = pdf317Code.split("@");
-        Map<String,String> documentData = new HashMap<>();
-        documentData.put(FIRST_NAME_PROPERTY_NAME, formatName(dataTokens[2]));
-        documentData.put(LAST_NAME_PROPERTY_NAME, formatName(dataTokens[1]));
-        documentData.put(DOCUMENT_NUMBER_PROPERTY_NAME, dataTokens[4]);
-        documentData.put(GENDER_PROPERTY_NAME, dataTokens[3]);
-        documentData.put(BIRTH_DATE_PROPERTY_NAME, dataTokens[6]); // TODO homogeneizar birthDate (timestamp?)
-        documentData.put(NATIONAL_IDENTFICATION_NUMBER_PROPERTY_NAME, dataTokens[0]);
-        return documentData;
-    }
-
-    private Map<String,String> getDocumentDataFromMRZCode (String mrzCode) {
-        Map<String,String> documentData = new HashMap<>();
-        if (mrzCode.length() == 90) {
-            String section1 = mrzCode.substring(0, 30);
-            String section2 = mrzCode.substring(30, 60);
-            String section3 = mrzCode.substring(60, 90);
-            int documentSeparatorIndex = section1.indexOf("<");
-            String documentField = section1.substring(5, documentSeparatorIndex);
-            char documentCheckSum = section1.charAt(documentSeparatorIndex+1);
-            char documentCalculatedCheckSum = calculateMRZChecksumDigitChar(documentField);
-            if (documentCheckSum != documentCalculatedCheckSum) {
-                throw new RuntimeException("Failed document checksum");
-            }
-            String birthDateField = section2.substring(0, 6);
-            char birthDateCheckSum = section2.charAt(6);
-            char birthDateCalculatedCheckSum = calculateMRZChecksumDigitChar(birthDateField);
-            if (birthDateCheckSum != birthDateCalculatedCheckSum) {
-                throw new RuntimeException("Failed birth date checksum");
-            }
-            String genderField = section2.substring(7,8);
-            String expirationDateField = section2.substring(8, 14);
-            char expirationDateCheckSum = section2.charAt(14);
-            char expirationDateCalculatedCheckSum = calculateMRZChecksumDigitChar(expirationDateField);
-            if (expirationDateCheckSum != expirationDateCalculatedCheckSum) {
-                throw new RuntimeException("Failed expiration date checksum");
-            }
-            String mrzField = documentField + '<' + documentCheckSum + birthDateField + birthDateCheckSum + expirationDateField + expirationDateCheckSum;
-            char mrzChecksum = section2.charAt(29);
-            char mrzCalculatedChecksum = calculateMRZChecksumDigitChar(mrzField);
-            if (mrzChecksum != mrzCalculatedChecksum) {
-                throw new RuntimeException("Failed mrz checksum");
-            }
-            String[] name = section3.split("<<");
-            String lastNameField = name[0].replace("<", " ");
-            String firstNameField = name[1].replace("<", " ");
-
-            documentData.put(DOCUMENT_NUMBER_PROPERTY_NAME, documentField);
-            documentData.put(BIRTH_DATE_PROPERTY_NAME, birthDateField); // TODO homogeneizar birthDate (timestamp?)
-            documentData.put(GENDER_PROPERTY_NAME, genderField);
-            documentData.put(LAST_NAME_PROPERTY_NAME, formatName(lastNameField));
-            documentData.put(FIRST_NAME_PROPERTY_NAME, formatName(firstNameField));
-        } else {
-            throw new RuntimeException ("Unrecognized mrz code \"" + mrzCode + "\"");
-        }
-        return documentData;
-    }
-
-    private String formatName(final String text) {
-        char[] chars = text.toLowerCase().toCharArray();
-        boolean found = false;
-        for (int i = 0; i < chars.length; i++) {
-            if (!found && Character.isLetter(chars[i])) {
-                chars[i] = Character.toUpperCase(chars[i]);
-                found = true;
-            } else if (Character.isWhitespace(chars[i]) || chars[i]=='.' || chars[i]=='\'') {
-                found = false;
-            }
-        }
-        return String.valueOf(chars);
     }
 
     private String getMRZCodeFromImage (byte[] imageBytes) throws Exception {
@@ -350,28 +268,7 @@ public class ApiController {
         return pdf417Code;
     }
 
-    private int calculateMRZChecksumDigit(String text) {
-        int result = 0;
-        for (int i = 0; i < text.length(); i++) {
-            char character = text.charAt(i);
-            int characterValue;
-            if (character == '<') {
-                characterValue = 0;
-            } else if (character >= '0' && character <= '9') {
-                characterValue = character - '0';
-            } else if (character >= 'A' && character <= 'Z') {
-                characterValue = character - 'A' + 10;
-            } else {
-                throw new RuntimeException("Unrecognized character \"" + character + "\" in MRZ ");
-            }
-            result += characterValue * MRZ_WEIGHTS[i % MRZ_WEIGHTS.length];
-        }
-        return result % 10;
-    }
 
-    public char calculateMRZChecksumDigitChar(String text) {
-        return (char) ('0' + calculateMRZChecksumDigit(text));
-    }
 
     private float compareFacesInImages (byte[] image1Bytes, byte[] image2Bytes) {
         com.amazonaws.services.rekognition.model.Image image1 = new com.amazonaws.services.rekognition.model.Image().withBytes(ByteBuffer.wrap(image1Bytes));;
