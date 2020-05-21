@@ -204,10 +204,12 @@ public class ApiController {
         if (pdf417RawText != null) {
             try {
                 Map<String, Object> documentInformation = PDF417Parser.parseCode(pdf417RawText);
-                response = Data.object()
-                    .set(TYPE_PROPERTY_NAME, PDF417_TYPE)
-                    .set(RAW_PROPERTY_NAME, pdf417RawText)
-                    .set(INFORMATION_PROPERTY_NAME, documentInformation);
+                if (documentInformation != null && !documentInformation.isEmpty()){
+                    response = Data.object()
+                            .set(TYPE_PROPERTY_NAME, PDF417_TYPE)
+                            .set(RAW_PROPERTY_NAME, pdf417RawText)
+                            .set(INFORMATION_PROPERTY_NAME, documentInformation);
+                }
             } catch (Exception ex) {}
         }
 
@@ -220,10 +222,12 @@ public class ApiController {
             if (mrzRawText != null) {
                 try {
                     Map<String, Object> documentInformation = MRZParser.parseCode(mrzRawText);
-                    response = Data.object()
-                        .set(TYPE_PROPERTY_NAME, MRZ_TYPE)
-                        .set(RAW_PROPERTY_NAME, mrzRawText)
-                        .set(INFORMATION_PROPERTY_NAME, documentInformation);
+                    if (documentInformation != null && !documentInformation.isEmpty()){
+                        response = Data.object()
+                                .set(TYPE_PROPERTY_NAME, MRZ_TYPE)
+                                .set(RAW_PROPERTY_NAME, mrzRawText)
+                                .set(INFORMATION_PROPERTY_NAME, documentInformation);
+                    }
                 } catch(Exception ex) {}
             }
         }
