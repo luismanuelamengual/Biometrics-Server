@@ -38,6 +38,9 @@ public class ApiController {
     private static final int FACE_TOO_CLOSE_STATUS_CODE = -3;
     private static final int FACE_TOO_FAR_AWAY_STATUS_CODE = -4;
 
+    private static final String MRZ_TYPE = "MRZ";
+    private static final String PDF417_TYPE = "PDF417";
+
     private static final String FRONTAL_FACE_INSTRUCTION = "frontal_face";
     private static final String LEFT_PROFILE_FACE_INSTRUCTION = "left_profile_face";
     private static final String RIGHT_PROFILE_FACE_INSTRUCTION = "right_profile_face";
@@ -52,9 +55,12 @@ public class ApiController {
     private static final String FIRST_NAME_PROPERTY_NAME = "firstName";
     private static final String LAST_NAME_PROPERTY_NAME = "lastName";
     private static final String BIRTH_DATE_PROPERTY_NAME = "birthDate";
+    private static final String EXPIRATION_DATE_PROPERTY_NAME = "birthDate";
     private static final String GENDER_PROPERTY_NAME = "gender";
     private static final String DOCUMENT_NUMBER_PROPERTY_NAME = "documentNumber";
     private static final String NATIONAL_IDENTFICATION_NUMBER_PROPERTY_NAME = "nationalIdentificationNumber";
+
+    private static int[] MRZ_WEIGHTS = {7, 3, 1};
 
     private CascadeClassifier faceClassfier;
     private CascadeClassifier profileFaceClassifier;
@@ -205,10 +211,13 @@ public class ApiController {
         }
 
         if (pdf417RawText != null) {
-            response = Data.object()
-                .set(TYPE_PROPERTY_NAME, "PDF417")
-                .set(RAW_PROPERTY_NAME, pdf417RawText)
-                .set(INFORMATION_PROPERTY_NAME, getDocumentDataFromPDF417Code(pdf417RawText));
+            try {
+                Map<String,String> documentInformation = getDocumentDataFromPDF417Code(pdf417RawText);
+                response = Data.object()
+                    .set(TYPE_PROPERTY_NAME, PDF417_TYPE)
+                    .set(RAW_PROPERTY_NAME, pdf417RawText)
+                    .set(INFORMATION_PROPERTY_NAME, documentInformation);
+            } catch (Exception ex) {}
         }
 
         if (response == null) {
@@ -218,10 +227,13 @@ public class ApiController {
             }
 
             if (mrzRawText != null) {
-                response = Data.object()
-                    .set(TYPE_PROPERTY_NAME, "MRZ")
-                    .set(RAW_PROPERTY_NAME, mrzRawText)
-                    .set(INFORMATION_PROPERTY_NAME, getDocumentDataFromMRZCode(mrzRawText));
+                try {
+                    Map<String,String> documentInformation = getDocumentDataFromMRZCode(mrzRawText);
+                    response = Data.object()
+                        .set(TYPE_PROPERTY_NAME, MRZ_TYPE)
+                        .set(RAW_PROPERTY_NAME, mrzRawText)
+                        .set(INFORMATION_PROPERTY_NAME, documentInformation);
+                } catch(Exception ex) {}
             }
         }
 
@@ -249,12 +261,43 @@ public class ApiController {
             String section1 = mrzCode.substring(0, 30);
             String section2 = mrzCode.substring(30, 60);
             String section3 = mrzCode.substring(60, 90);
-            documentData.put(DOCUMENT_NUMBER_PROPERTY_NAME, section1.substring(5, section1.indexOf("<")));
-            documentData.put(BIRTH_DATE_PROPERTY_NAME, section2.substring(0, 6)); // TODO homogeneizar birthDate (timestamp?)
-            documentData.put(GENDER_PROPERTY_NAME, section2.substring(7, 8));
+            int documentSeparatorIndex = section1.indexOf("<");
+            String documentField = section1.substring(5, documentSeparatorIndex);
+            char documentCheckSum = section1.charAt(documentSeparatorIndex+1);
+            char documentCalculatedCheckSum = calculateMRZChecksumDigitChar(documentField);
+            if (documentCheckSum != documentCalculatedCheckSum) {
+                throw new RuntimeException("Failed document checksum");
+            }
+            String birthDateField = section2.substring(0, 6);
+            char birthDateCheckSum = section2.charAt(6);
+            char birthDateCalculatedCheckSum = calculateMRZChecksumDigitChar(birthDateField);
+            if (birthDateCheckSum != birthDateCalculatedCheckSum) {
+                throw new RuntimeException("Failed birth date checksum");
+            }
+            String genderField = section2.substring(7,8);
+            String expirationDateField = section2.substring(8, 14);
+            char expirationDateCheckSum = section2.charAt(14);
+            char expirationDateCalculatedCheckSum = calculateMRZChecksumDigitChar(expirationDateField);
+            if (expirationDateCheckSum != expirationDateCalculatedCheckSum) {
+                throw new RuntimeException("Failed expiration date checksum");
+            }
+            String mrzField = documentField + '<' + documentCheckSum + birthDateField + birthDateCheckSum + expirationDateField + expirationDateCheckSum;
+            char mrzChecksum = section2.charAt(29);
+            char mrzCalculatedChecksum = calculateMRZChecksumDigitChar(mrzField);
+            if (mrzChecksum != mrzCalculatedChecksum) {
+                throw new RuntimeException("Failed mrz checksum");
+            }
             String[] name = section3.split("<<");
-            documentData.put(LAST_NAME_PROPERTY_NAME, formatName(name[0].replace("<", " ")));
-            documentData.put(FIRST_NAME_PROPERTY_NAME, formatName(name[1].replace("<", " ")));
+            String lastNameField = name[0].replace("<", " ");
+            String firstNameField = name[1].replace("<", " ");
+
+            documentData.put(DOCUMENT_NUMBER_PROPERTY_NAME, documentField);
+            documentData.put(BIRTH_DATE_PROPERTY_NAME, birthDateField); // TODO homogeneizar birthDate (timestamp?)
+            documentData.put(GENDER_PROPERTY_NAME, genderField);
+            documentData.put(LAST_NAME_PROPERTY_NAME, formatName(lastNameField));
+            documentData.put(FIRST_NAME_PROPERTY_NAME, formatName(firstNameField));
+        } else {
+            throw new RuntimeException ("Unrecognized mrz code \"" + mrzCode + "\"");
         }
         return documentData;
     }
@@ -301,6 +344,29 @@ public class ApiController {
             }
         }
         return pdf417Code;
+    }
+
+    private int calculateMRZChecksumDigit(String text) {
+        int result = 0;
+        for (int i = 0; i < text.length(); i++) {
+            char character = text.charAt(i);
+            int characterValue;
+            if (character == '<') {
+                characterValue = 0;
+            } else if (character >= '0' && character <= '9') {
+                characterValue = character - '0';
+            } else if (character >= 'A' && character <= 'Z') {
+                characterValue = character - 'A' + 10;
+            } else {
+                throw new RuntimeException("Unrecognized character \"" + character + "\" in MRZ ");
+            }
+            result += characterValue * MRZ_WEIGHTS[i % MRZ_WEIGHTS.length];
+        }
+        return result % 10;
+    }
+
+    public char calculateMRZChecksumDigitChar(String text) {
+        return (char) ('0' + calculateMRZChecksumDigit(text));
     }
 
     private float compareFacesInImages (byte[] image1Bytes, byte[] image2Bytes) {
