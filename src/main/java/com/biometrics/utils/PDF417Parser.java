@@ -1,9 +1,10 @@
 package com.biometrics.utils;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class PDF417Parser {
+
+    private static TimeZone GMT_TIME_ZONE = TimeZone.getTimeZone("GMT");
 
     public static Map<String, Object> parseCode(String pdf417code) {
         String[] dataTokens = pdf417code.split("@");
@@ -40,6 +41,11 @@ public class PDF417Parser {
     }
 
     private static long formatDate(final String text) {
-        return 0;
+        int dayOfMonth = Integer.parseInt(text.substring(0,2));
+        int month = Integer.parseInt(text.substring(3,5)) - 1;
+        int year = Integer.parseInt(text.substring(6));
+        Calendar calendar = new GregorianCalendar(year, month, dayOfMonth);
+        calendar.setTimeZone(PDF417Parser.GMT_TIME_ZONE);
+        return calendar.getTimeInMillis();
     }
 }
