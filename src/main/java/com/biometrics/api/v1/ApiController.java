@@ -316,17 +316,19 @@ public class ApiController {
         return String.valueOf(chars);
     }
 
-    private String getMRZCodeFromImage (byte[] image) throws Exception {
+    private String getMRZCodeFromImage (byte[] imageBytes) throws Exception {
         String mrzCode = null;
-        Mat mrzMat = detectMrz(OpenCVUtils.getMat(image));
-        if (mrzMat != null) {
-            Image mrzImage = OpenCVUtils.getBufferedImage(mrzMat);
-            String mrzCodeTest = tesseract.doOCR((BufferedImage)mrzImage);
-            if (mrzCodeTest != null && !mrzCodeTest.isEmpty() && mrzCodeTest.length() > 40 && mrzCodeTest.indexOf("<<") > 0) {
-                mrzCodeTest = mrzCodeTest.replaceAll("\n", "");
-                //BUG Tesseract: Sometimes reads <0O< instead of <0<
-                mrzCodeTest = mrzCodeTest.replaceAll("<0O<", "<0<");
-                mrzCode = mrzCodeTest;
+        if (imageBytes.length > 0) {
+            Mat mrzMat = detectMrz(OpenCVUtils.getMat(imageBytes));
+            if (mrzMat != null) {
+                Image mrzImage = OpenCVUtils.getBufferedImage(mrzMat);
+                String mrzCodeTest = tesseract.doOCR((BufferedImage)mrzImage);
+                if (mrzCodeTest != null && !mrzCodeTest.isEmpty() && mrzCodeTest.length() > 40 && mrzCodeTest.indexOf("<<") > 0) {
+                    mrzCodeTest = mrzCodeTest.replaceAll("\n", "");
+                    //BUG Tesseract: Sometimes reads <0O< instead of <0<
+                    mrzCodeTest = mrzCodeTest.replaceAll("<0O<", "<0<");
+                    mrzCode = mrzCodeTest;
+                }
             }
         }
         return mrzCode;
@@ -334,13 +336,15 @@ public class ApiController {
 
     private String getPDF417CodeFromImage(byte[] imageBytes) throws Exception {
         String pdf417Code = null;
-        BarcodeReader dbr = new BarcodeReader();
-        TextResult[] result = dbr.decodeFileInMemory(imageBytes, "");
-        if (result != null && result.length > 0) {
-            TextResult barcodeData = result[0];
-            int dataLimitIndex = barcodeData.barcodeText.indexOf("***");
-            if (dataLimitIndex > 0) {
-                pdf417Code = barcodeData.barcodeText.substring(0, dataLimitIndex);
+        if (imageBytes.length > 0) {
+            BarcodeReader dbr = new BarcodeReader();
+            TextResult[] result = dbr.decodeFileInMemory(imageBytes, "");
+            if (result != null && result.length > 0) {
+                TextResult barcodeData = result[0];
+                int dataLimitIndex = barcodeData.barcodeText.indexOf("***");
+                if (dataLimitIndex > 0) {
+                    pdf417Code = barcodeData.barcodeText.substring(0, dataLimitIndex);
+                }
             }
         }
         return pdf417Code;
