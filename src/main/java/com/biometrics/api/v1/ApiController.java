@@ -256,8 +256,11 @@ public class ApiController {
                 String mrzCodeText = tesseract.doOCR((BufferedImage)mrzImage);
                 if (mrzCodeText != null && !mrzCodeText.isEmpty() && mrzCodeText.length() > 40 && mrzCodeText.indexOf("<<") > 0) {
                     mrzCodeText = mrzCodeText.replaceAll("\n", "");
-                    mrzCodeText = mrzCodeText.replaceAll("<0O<", "<0<");
-                    mrzCodeText = mrzCodeText.replaceAll("<O<", "<0<");
+                    mrzCodeText = mrzCodeText.replaceFirst("<0O<", "<0<");
+                    mrzCodeText = mrzCodeText.replaceFirst("<O<", "<0<");
+                    mrzCodeText = mrzCodeText.replaceFirst("<D<", "<0<");
+                    mrzCodeText = mrzCodeText.replaceFirst("<B<", "<8<");
+                    mrzCodeText = mrzCodeText.replaceFirst("<A<", "<4<");
                     if (mrzCodeText.startsWith("1D")) {
                         mrzCodeText = mrzCodeText.replaceFirst("1D", "ID");
                     }
@@ -367,17 +370,12 @@ public class ApiController {
                 mrzMat = resizedImg.submat(rect);
             }
         } else if (rotatedRect.size.height > (rotatedRect.size.width * 3.8)) {
-            if (Math.abs(rotatedRect.angle) > 3) {
-                double rotationAngle = (rotatedRect.angle < 0 ? 90 : -90) + rotatedRect.angle;
-                Mat rotatedMatrix2D = Imgproc.getRotationMatrix2D(rotatedRect.center, rotationAngle, 1.0);
-                Mat rotatedImg = new Mat();
-                Imgproc.warpAffine(resizedImg, rotatedImg, rotatedMatrix2D, resizedImg.size(), Imgproc.INTER_CUBIC, Core.BORDER_REPLICATE);
-                Rect rect = new Rect((int)rotatedRect.center.x - ((int)rotatedRect.size.height / 2), (int)rotatedRect.center.y - ((int)rotatedRect.size.width / 2), (int)rotatedRect.size.height, (int)rotatedRect.size.width);
-                mrzMat = rotatedImg.submat(rect);
-            } else {
-                Rect rect = Imgproc.boundingRect(contour);
-                mrzMat = resizedImg.submat(rect);
-            }
+            double rotationAngle = (rotatedRect.angle < 0 ? 90 : -90) + rotatedRect.angle;
+            Mat rotatedMatrix2D = Imgproc.getRotationMatrix2D(rotatedRect.center, rotationAngle, 1.0);
+            Mat rotatedImg = new Mat();
+            Imgproc.warpAffine(resizedImg, rotatedImg, rotatedMatrix2D, resizedImg.size(), Imgproc.INTER_CUBIC, Core.BORDER_REPLICATE);
+            Rect rect = new Rect((int)rotatedRect.center.x - ((int)rotatedRect.size.height / 2), (int)rotatedRect.center.y - ((int)rotatedRect.size.width / 2), (int)rotatedRect.size.height, (int)rotatedRect.size.width);
+            mrzMat = rotatedImg.submat(rect);
         }
         return mrzMat;
     }
