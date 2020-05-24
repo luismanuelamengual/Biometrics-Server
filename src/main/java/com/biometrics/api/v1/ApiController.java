@@ -253,12 +253,15 @@ public class ApiController {
             Mat mrzMat = detectMrz(OpenCVUtils.getMat(imageBytes));
             if (mrzMat != null) {
                 Image mrzImage = OpenCVUtils.getBufferedImage(mrzMat);
-                String mrzCodeTest = tesseract.doOCR((BufferedImage)mrzImage);
-                if (mrzCodeTest != null && !mrzCodeTest.isEmpty() && mrzCodeTest.length() > 40 && mrzCodeTest.indexOf("<<") > 0) {
-                    mrzCodeTest = mrzCodeTest.replaceAll("\n", "");
-                    //BUG Tesseract: Sometimes reads <0O< instead of <0<
-                    mrzCodeTest = mrzCodeTest.replaceAll("<0O<", "<0<");
-                    mrzCode = mrzCodeTest;
+                String mrzCodeText = tesseract.doOCR((BufferedImage)mrzImage);
+                if (mrzCodeText != null && !mrzCodeText.isEmpty() && mrzCodeText.length() > 40 && mrzCodeText.indexOf("<<") > 0) {
+                    mrzCodeText = mrzCodeText.replaceAll("\n", "");
+                    mrzCodeText = mrzCodeText.replaceAll("<0O<", "<0<");
+                    mrzCodeText = mrzCodeText.replaceAll("<O<", "<0<");
+                    if (mrzCodeText.startsWith("1D")) {
+                        mrzCodeText = mrzCodeText.replaceFirst("1D", "ID");
+                    }
+                    mrzCode = mrzCodeText;
                 }
             }
         }
@@ -348,9 +351,34 @@ public class ApiController {
         Imgproc.findContours(dilated_edges, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
         hierarchy.release();
         MatOfPoint contour = OpenCVUtils.getLargestContour(contours);
-        Rect rect = Imgproc.boundingRect(contour);
-        Mat roi = resizedImg.submat(rect);
-        double roiProportion = roi.width() > roi.height() ? (double)roi.width() / (double)roi.height() : (double)roi.height() / (double)roi.width();
-        return (roiProportion >= 4)? roi : null;
+
+        MatOfPoint2f contour2f = new MatOfPoint2f(contour.toArray());
+        RotatedRect rotatedRect = Imgproc.minAreaRect(contour2f);
+        Mat mrzMat = null;
+        if (rotatedRect.size.width > (rotatedRect.size.height * 3.8)) {
+            if (Math.abs(rotatedRect.angle) > 3) {
+                Mat rotatedMatrix2D = Imgproc.getRotationMatrix2D(rotatedRect.center, rotatedRect.angle, 1.0);
+                Mat rotatedImg = new Mat();
+                Imgproc.warpAffine(resizedImg, rotatedImg, rotatedMatrix2D, resizedImg.size(), Imgproc.INTER_CUBIC, Core.BORDER_REPLICATE);
+                Rect rect = new Rect((int)rotatedRect.center.x - ((int)rotatedRect.size.width / 2), (int)rotatedRect.center.y - ((int)rotatedRect.size.height / 2), (int)rotatedRect.size.width, (int)rotatedRect.size.height);
+                mrzMat = rotatedImg.submat(rect);
+            } else {
+                Rect rect = Imgproc.boundingRect(contour);
+                mrzMat = resizedImg.submat(rect);
+            }
+        } else if (rotatedRect.size.height > (rotatedRect.size.width * 3.8)) {
+            if (Math.abs(rotatedRect.angle) > 3) {
+                double rotationAngle = (rotatedRect.angle < 0 ? 90 : -90) + rotatedRect.angle;
+                Mat rotatedMatrix2D = Imgproc.getRotationMatrix2D(rotatedRect.center, rotationAngle, 1.0);
+                Mat rotatedImg = new Mat();
+                Imgproc.warpAffine(resizedImg, rotatedImg, rotatedMatrix2D, resizedImg.size(), Imgproc.INTER_CUBIC, Core.BORDER_REPLICATE);
+                Rect rect = new Rect((int)rotatedRect.center.x - ((int)rotatedRect.size.height / 2), (int)rotatedRect.center.y - ((int)rotatedRect.size.width / 2), (int)rotatedRect.size.height, (int)rotatedRect.size.width);
+                mrzMat = rotatedImg.submat(rect);
+            } else {
+                Rect rect = Imgproc.boundingRect(contour);
+                mrzMat = resizedImg.submat(rect);
+            }
+        }
+        return mrzMat;
     }
 }
