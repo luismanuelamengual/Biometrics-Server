@@ -148,7 +148,7 @@ public class ApiController {
                 double xRatio = faceRect.width / (double)imageWidth;
                 double yRatio = faceRect.height / (double)imageHeight;
                 double ratio = Math.max(xRatio, yRatio);
-                if (ratio < 0.5) {
+                if (ratio < 0.4) {
                     status = FACE_TOO_FAR_AWAY_STATUS_CODE;
                 } else if (ratio > 0.7) {
                     status = FACE_TOO_CLOSE_STATUS_CODE;
