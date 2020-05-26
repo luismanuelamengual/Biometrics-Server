@@ -96,7 +96,7 @@ public final class OpenCVUtils {
                 biggestFeatureArea = biggestFeature.area();
             }
         }
-        return image.submat(biggestFeature);
+        return biggestFeature != null ? image.submat(biggestFeature) : null;
     }
 
     public static Rect[] detectFeatureRects(Mat image, CascadeClassifier classifier) {
