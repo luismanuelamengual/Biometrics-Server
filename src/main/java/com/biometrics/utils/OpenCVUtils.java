@@ -262,6 +262,12 @@ public final class OpenCVUtils {
         return result;
     }
 
+    public static Mat adaptiveBlackAndWhiteMat(Mat src) {
+        Mat result = grayScaleMat(src);
+        Imgproc.adaptiveThreshold(result, result, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 115, 1);
+        return result;
+    }
+
     public static CascadeClassifier getClassfierFromResource(String resourceName) {
         CascadeClassifier classifier = null;
         InputStream inputStream = null;
