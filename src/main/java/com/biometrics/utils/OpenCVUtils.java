@@ -3,6 +3,7 @@ package com.biometrics.utils;
 import org.opencv.core.Point;
 import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.CLAHE;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 
@@ -16,6 +17,8 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import static org.opencv.core.CvType.CV_8U;
 
 public final class OpenCVUtils {
 
@@ -266,6 +269,19 @@ public final class OpenCVUtils {
         Mat result = grayScaleMat(src);
         Imgproc.adaptiveThreshold(result, result, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 115, 1);
         return result;
+    }
+
+    public static Mat equalizeLightningMat(Mat src) {
+        CLAHE clahe = Imgproc.createCLAHE(2.0, new Size(8, 8));
+        Mat equalized = new Mat();
+        clahe.apply(src, equalized);
+        return equalized;
+    }
+
+    public static Mat enhanceEdgesMat(Mat src) {
+        Mat enhanced = new Mat();
+        Imgproc.Laplacian(src, enhanced, CV_8U, 3, 1, 0);
+        return enhanced;
     }
 
     public static CascadeClassifier getClassfierFromResource(String resourceName) {
