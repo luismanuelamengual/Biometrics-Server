@@ -246,6 +246,22 @@ public final class OpenCVUtils {
         return sharped;
     }
 
+    public static Mat grayScaleMat(Mat src){
+        Mat result = new Mat();
+        Imgproc.cvtColor(src, result, Imgproc.COLOR_BGR2GRAY);
+        return result;
+    }
+
+    public static Mat blackAndWhiteMat(Mat src) {
+        return blackAndWhiteMat(src, 127);
+    }
+
+    public static Mat blackAndWhiteMat(Mat src, double threshold) {
+        Mat result = grayScaleMat(src);
+        Imgproc.threshold(result, result, threshold, 255, Imgproc.THRESH_BINARY);
+        return result;
+    }
+
     public static CascadeClassifier getClassfierFromResource(String resourceName) {
         CascadeClassifier classifier = null;
         InputStream inputStream = null;
