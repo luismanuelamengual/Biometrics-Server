@@ -377,6 +377,10 @@ public class ApiController {
             Rect rect = new Rect((int)rotatedRect.center.x - ((int)rotatedRect.size.height / 2), (int)rotatedRect.center.y - ((int)rotatedRect.size.width / 2), (int)rotatedRect.size.height, (int)rotatedRect.size.width);
             mrzMat = rotatedImg.submat(rect);
         }
+
+        if (mrzMat != null && !mrzMat.empty()) {
+            mrzMat = OpenCVUtils.sharpenMat(mrzMat);
+        }
         return mrzMat;
     }
 }
