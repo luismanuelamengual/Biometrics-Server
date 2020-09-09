@@ -2,9 +2,8 @@ package com.biometrics.api.v1;
 
 import com.amazonaws.services.rekognition.AmazonRekognition;
 import com.amazonaws.services.rekognition.AmazonRekognitionClientBuilder;
-import com.amazonaws.services.rekognition.model.CompareFacesMatch;
-import com.amazonaws.services.rekognition.model.CompareFacesRequest;
-import com.amazonaws.services.rekognition.model.CompareFacesResult;
+import com.amazonaws.services.rekognition.model.Label;
+import com.amazonaws.services.rekognition.model.*;
 import com.biometrics.utils.MRZParser;
 import com.biometrics.utils.OpenCVUtils;
 import com.biometrics.utils.PDF417Parser;
@@ -13,6 +12,7 @@ import com.dynamsoft.barcode.TextResult;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.util.LoadLibs;
 import org.neogroup.warp.controllers.ControllerComponent;
+import org.neogroup.warp.controllers.routing.Body;
 import org.neogroup.warp.controllers.routing.Parameter;
 import org.neogroup.warp.controllers.routing.Post;
 import org.neogroup.warp.data.Data;
@@ -22,7 +22,7 @@ import org.opencv.core.*;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 
-import java.awt.*;
+import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -52,6 +52,7 @@ public class ApiController {
     private static final String TYPE_PROPERTY_NAME = "type";
     private static final String RAW_PROPERTY_NAME = "raw";
     private static final String INFORMATION_PROPERTY_NAME = "information";
+    private static final String LIVENESS_PROPERTY_NAME = "liveness";
 
     private CascadeClassifier faceClassfier;
     private CascadeClassifier profileFaceClassifier;
@@ -59,6 +60,28 @@ public class ApiController {
     private CascadeClassifier eyePairClassifier;
     private Tesseract tesseract;
     private AmazonRekognition rekognitionClient;
+
+    private static final String[] SPOOFING_LABELS = new String[] {
+        "Phone",
+        "Electronics",
+        "Iphone",
+        "Cell Phone",
+        "Mobile Phone",
+        "Laptop",
+        "TV",
+        "Screen",
+        "Keyboard",
+        "LCD Screen",
+        "Electronics",
+        "Computer Keyboard",
+        "Monitor",
+        "Pc",
+        "Television",
+        "Computer Hardware",
+        "Computer",
+        "Hardware",
+        "Display"
+    };
 
     public ApiController() {
         faceClassfier = OpenCVUtils.getClassfierFromResource("cascades/face.xml");
@@ -69,6 +92,75 @@ public class ApiController {
         tesseract = new Tesseract();
         tesseract.setDatapath(LoadLibs.extractTessResources("tessdata").getAbsolutePath());
         tesseract.setLanguage("spa");
+    }
+
+    @Post("check_liveness_image")
+    public DataObject checkLivenesssImage (@Body byte[] imageBytes, @Parameter(value="verifyLiveness", required=false) Boolean verifyLiveness) throws Exception {
+        Mat image = OpenCVUtils.getMat(imageBytes);
+        Rect frontalFaceRect = OpenCVUtils.detectBiggestFeatureRect(image, faceClassfier);
+        Rect eyePairRect = OpenCVUtils.detectBiggestFeatureRect(image, eyePairClassifier);
+
+        int status = FACE_NOT_FOUND_STATUS_CODE;
+        if (frontalFaceRect != null && eyePairRect != null && OpenCVUtils.containsRect(frontalFaceRect, eyePairRect)) {
+            int imageWidth = image.width();
+            int imageHeight = image.height();
+            int imageMiddleX = imageWidth / 2;
+            int imageMiddleY = imageHeight / 2;
+            int faceMiddleX = frontalFaceRect.x + (frontalFaceRect.width / 2);
+            int faceMiddleY = frontalFaceRect.y + (frontalFaceRect.height / 2);
+            int xDifferential = Math.abs(imageMiddleX - faceMiddleX);
+            int yDifferential = Math.abs(imageMiddleY - faceMiddleY);
+            double faceAspectRatio = 0.5;
+            double imageAspectRatio = (double)imageWidth / (double)imageHeight;
+            double xDifferentialLimit = 0.0;
+            double yDifferentialLimit = 0.0;
+            if (imageAspectRatio > faceAspectRatio) {
+                xDifferentialLimit = imageHeight / 4.0;
+                yDifferentialLimit = imageHeight / 4.0;
+            } else {
+                xDifferentialLimit = imageWidth / 4.0;
+                yDifferentialLimit = imageWidth / 4.0;
+            }
+
+            if (xDifferential > xDifferentialLimit || yDifferential > yDifferentialLimit) {
+                status = FACE_NOT_CENTERED_STATUS_CODE;
+            } else {
+                double xRatio = frontalFaceRect.width / (double) imageWidth;
+                double yRatio = frontalFaceRect.height / (double) imageHeight;
+                double ratio = Math.max(xRatio, yRatio);
+                if (ratio < 0.4) {
+                    status = FACE_TOO_FAR_AWAY_STATUS_CODE;
+                } else if (ratio > 0.7) {
+                    status = FACE_TOO_CLOSE_STATUS_CODE;
+                } else {
+                    status = FACE_MATCH_SUCCESS_STATUS_CODE;
+                }
+            }
+        }
+
+        DataObject response = Data.object();
+        response.set(STATUS_PROPERTY_NAME, status);
+        if ((verifyLiveness == null || verifyLiveness) && status == FACE_MATCH_SUCCESS_STATUS_CODE) {
+            boolean liveness = true;
+            com.amazonaws.services.rekognition.model.Image amazonImage = new com.amazonaws.services.rekognition.model.Image().withBytes(ByteBuffer.wrap(imageBytes));;
+            DetectLabelsRequest request = new DetectLabelsRequest().withImage(amazonImage).withMaxLabels(20).withMinConfidence(75F);
+            DetectLabelsResult result = rekognitionClient.detectLabels(request);
+            for(Label label : result.getLabels()) {
+                String labelName = label.getName();
+                for (String spoofingLabel : SPOOFING_LABELS) {
+                    if (labelName.equals(spoofingLabel)) {
+                        liveness = false;
+                        break;
+                    }
+                }
+                if (!liveness) {
+                    break;
+                }
+            }
+            response.set(LIVENESS_PROPERTY_NAME, liveness);
+        }
+
+        return response;
     }
 
     @Post("check_liveness_instruction")
