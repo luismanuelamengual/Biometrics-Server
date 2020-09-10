@@ -63,7 +63,6 @@ public class ApiController {
 
     private static final String[] SPOOFING_LABELS = new String[] {
         "Phone",
-        "Electronics",
         "Iphone",
         "Cell Phone",
         "Mobile Phone",
@@ -72,7 +71,6 @@ public class ApiController {
         "Screen",
         "Keyboard",
         "LCD Screen",
-        "Electronics",
         "Computer Keyboard",
         "Monitor",
         "Pc",
