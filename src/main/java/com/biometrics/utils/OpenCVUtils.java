@@ -40,9 +40,12 @@ public final class OpenCVUtils {
         return new Scalar(color.getBlue(), color.getGreen(), color.getRed());
     }
 
-    public static Image getBufferedImage(Mat image){
+    public static Image getBufferedImage(Mat image) {
+        if (image.type() != 0) {
+            image.convertTo(image, CV_8U, 255);
+        }
         int type = BufferedImage.TYPE_BYTE_GRAY;
-        if ( image.channels() > 1 ) {
+        if (image.channels() > 1) {
             Mat m2 = new Mat();
             Imgproc.cvtColor(image,m2,Imgproc.COLOR_BGR2RGB);
             type = BufferedImage.TYPE_3BYTE_BGR;
@@ -61,26 +64,27 @@ public final class OpenCVUtils {
         return flippedImage;
     }
 
-    public static Mat resizeMat(Mat image, int width, int height){
-        Size imgDim = image.size();
-        Size dim = null;
-        double r = 1;
-        if(width <= 0 && height <= 0) {
-            return image;
+    public static Mat resizeMat(Mat image, int maxWidth, int maxHeight) {
+        Size imageSize = image.size();
+        double newImageWidth = imageSize.width;
+        double newImageHeight = imageSize.height;
+
+        if (maxWidth > 0 && newImageWidth > maxWidth) {
+            double ratio = (maxWidth / newImageWidth);
+            newImageWidth *= ratio;
+            newImageHeight *= ratio;
         }
-        if (height == 0) {
-            r =  width/imgDim.width;
-            dim = new Size(width, (int)(image.height() * r));
-        } else if(width == 0) {
-            r = height/imgDim.height;
-            dim = new Size((int)(image.width() * r), height);
+
+        if (maxHeight > 0 && newImageHeight > maxHeight) {
+            double ratio = (maxHeight / newImageHeight);
+            newImageWidth *= ratio;
+            newImageHeight *= ratio;
         }
-        else if (width > 0 && height > 0) {
-            dim = new Size(width, height);
-        }
-        Mat resized = new Mat();
-        Imgproc.resize(image, resized, dim, 0, 0, Imgproc.INTER_AREA);
-        return resized;
+
+        Size newImageSize = new Size(newImageWidth, newImageHeight);
+        Mat resizedImage = new Mat(newImageSize, CvType.CV_8UC4);
+        Imgproc.resize(image, resizedImage, newImageSize);
+        return resizedImage;
     }
 
     public static MatOfRect detectFeatures(Mat image, CascadeClassifier classifier) {
@@ -247,6 +251,12 @@ public final class OpenCVUtils {
         Imgproc.GaussianBlur(src, sharped, new Size(0, 0), 3);
         Core.addWeighted(src, 1.5, sharped, -0.5, 0, sharped);
         return sharped;
+    }
+
+    public static Mat smoothMat(Mat image, int smothSize) {
+        Mat blurred = new Mat();
+        Imgproc.GaussianBlur(image, blurred, new Size(smothSize, smothSize), 0);
+        return blurred;
     }
 
     public static Mat grayScaleMat(Mat src){
