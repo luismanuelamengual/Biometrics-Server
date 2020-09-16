@@ -294,6 +294,46 @@ public final class OpenCVUtils {
         return enhanced;
     }
 
+    public static Mat getMagnitudeSpectrum(Mat image) {
+        List<Mat> planes = new ArrayList<>();
+        Mat complexImage = new Mat();
+        Mat padded = new Mat();
+        int addPixelRows = Core.getOptimalDFTSize(image.rows());
+        int addPixelCols = Core.getOptimalDFTSize(image.cols());
+        Core.copyMakeBorder(image, padded, 0, addPixelRows - image.rows(), 0, addPixelCols - image.cols(), Core.BORDER_CONSTANT, Scalar.all(0));
+        padded.convertTo(padded, CvType.CV_32F);
+        planes.add(padded);
+        planes.add(Mat.zeros(padded.size(), CvType.CV_32F));
+        Core.merge(planes, complexImage);
+        Core.dft(complexImage, complexImage);
+
+        List<Mat> newPlanes = new ArrayList<>();
+        Mat mag = new Mat();
+        Core.split(complexImage, newPlanes);
+        Core.magnitude(newPlanes.get(0), newPlanes.get(1), mag);
+        Core.add(Mat.ones(mag.size(), CvType.CV_32F), mag, mag);
+        Core.log(mag, mag);
+
+        mag = mag.submat(new Rect(0, 0, mag.cols() & -2, mag.rows() & -2));
+        int cx = mag.cols() / 2;
+        int cy = mag.rows() / 2;
+        Mat q0 = new Mat(mag, new Rect(0, 0, cx, cy));
+        Mat q1 = new Mat(mag, new Rect(cx, 0, cx, cy));
+        Mat q2 = new Mat(mag, new Rect(0, cy, cx, cy));
+        Mat q3 = new Mat(mag, new Rect(cx, cy, cx, cy));
+        Mat tmp = new Mat();
+        q0.copyTo(tmp);
+        q3.copyTo(q0);
+        tmp.copyTo(q3);
+        q1.copyTo(tmp);
+        q2.copyTo(q1);
+        tmp.copyTo(q2);
+
+        mag.convertTo(mag, CvType.CV_8UC1);
+        Core.normalize(mag, mag, 0, 255, Core.NORM_MINMAX, CvType.CV_8UC1);
+        return mag;
+    }
+
     public static CascadeClassifier getClassfierFromResource(String resourceName) {
         CascadeClassifier classifier = null;
         InputStream inputStream = null;
