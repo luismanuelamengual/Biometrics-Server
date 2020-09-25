@@ -294,6 +294,32 @@ public final class OpenCVUtils {
         return enhanced;
     }
 
+    public static Mat getLBPMat(Mat src) {
+        Mat lbp = Mat.zeros(src.size(), CV_8U);
+        int rows = src.rows();
+        int cols = src.cols();
+        int[] rowOffsets = {-1, 0, 1, 1, 1, 0, -1, -1};
+        int[] colOffsets = {-1, -1, -1, 0, 1, 1, 1, 0};
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                double centerValue = src.get(row, col)[0];
+                double newCenterValue = 0;
+                for (int offset = 0; offset < 8; offset++) {
+                    int offsetRow = row + rowOffsets[offset];
+                    int offsetCol = col + colOffsets[offset];
+                    if (offsetRow > 0 && offsetCol > 0 && offsetRow < rows && offsetCol < cols) {
+                        double offsetValue = src.get(offsetRow, offsetCol)[0];
+                        if (offsetValue >= centerValue) {
+                            newCenterValue += Math.pow(2, offset);
+                        }
+                    }
+                }
+                lbp.put(row, col, newCenterValue);
+            }
+        }
+        return lbp;
+    }
+
     public static Mat getMagnitudeSpectrum(Mat image) {
         List<Mat> planes = new ArrayList<>();
         Mat complexImage = new Mat();
