@@ -29,8 +29,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static org.opencv.core.CvType.CV_32F;
+import static org.opencv.core.CvType.CV_8UC1;
+
 @ControllerComponent("v1")
 public class ApiController {
+
+    private static final int LIVENESS_OK_STATUS = 0;
+    private static final int LIVENESS_FACE_NOT_FOUND_STATUS = 1000;
+    private static final int LIVENESS_FACE_NOT_CENTERED_STATUS = 1001;
+    private static final int LIVENESS_FACE_TOO_CLOSE_STATUS = 1002;
+    private static final int LIVENESS_FACE_TOO_FAR_AWAY_STATUS = 1003;
+    private static final int LIVENESS_BRIGHT_TEST_FAIL_STATUS = 2001;
+    private static final int LIVENESS_SPOOFING_LABELS_DETECTED_STATUS = 9001;
 
     private static final int FACE_MATCH_SUCCESS_STATUS_CODE = 0;
     private static final int FACE_WITH_INCORRECT_GESTURE_STATUS_CODE = 1;
@@ -52,7 +63,6 @@ public class ApiController {
     private static final String TYPE_PROPERTY_NAME = "type";
     private static final String RAW_PROPERTY_NAME = "raw";
     private static final String INFORMATION_PROPERTY_NAME = "information";
-    private static final String LIVENESS_PROPERTY_NAME = "liveness";
 
     private CascadeClassifier faceClassfier;
     private CascadeClassifier profileFaceClassifier;
@@ -93,12 +103,12 @@ public class ApiController {
     }
 
     @Post("check_liveness_image")
-    public DataObject checkLivenesssImage (@Body byte[] imageBytes, @Parameter(value="verifyLiveness", required=false) Boolean verifyLiveness) throws Exception {
+    public DataObject checkLivenesssImage (@Body byte[] imageBytes) throws Exception {
         Mat image = OpenCVUtils.getMat(imageBytes);
         Rect frontalFaceRect = OpenCVUtils.detectBiggestFeatureRect(image, faceClassfier);
         Rect eyePairRect = OpenCVUtils.detectBiggestFeatureRect(image, eyePairClassifier);
 
-        int status = FACE_NOT_FOUND_STATUS_CODE;
+        int status = LIVENESS_FACE_NOT_FOUND_STATUS;
         if (frontalFaceRect != null && eyePairRect != null && OpenCVUtils.containsRect(frontalFaceRect, eyePairRect)) {
             int imageWidth = image.width();
             int imageHeight = image.height();
@@ -121,25 +131,53 @@ public class ApiController {
             }
 
             if (xDifferential > xDifferentialLimit || yDifferential > yDifferentialLimit) {
-                status = FACE_NOT_CENTERED_STATUS_CODE;
+                status = LIVENESS_FACE_NOT_CENTERED_STATUS;
             } else {
                 double xRatio = frontalFaceRect.width / (double) imageWidth;
                 double yRatio = frontalFaceRect.height / (double) imageHeight;
                 double ratio = Math.max(xRatio, yRatio);
                 if (ratio < 0.4) {
-                    status = FACE_TOO_FAR_AWAY_STATUS_CODE;
+                    status = LIVENESS_FACE_TOO_FAR_AWAY_STATUS;
                 } else if (ratio > 0.7) {
-                    status = FACE_TOO_CLOSE_STATUS_CODE;
+                    status = LIVENESS_FACE_TOO_CLOSE_STATUS;
                 } else {
-                    status = FACE_MATCH_SUCCESS_STATUS_CODE;
+                    status = LIVENESS_OK_STATUS;
                 }
             }
         }
 
-        DataObject response = Data.object();
-        response.set(STATUS_PROPERTY_NAME, status);
-        if ((verifyLiveness == null || verifyLiveness) && status == FACE_MATCH_SUCCESS_STATUS_CODE) {
-            boolean liveness = true;
+        if (status == LIVENESS_OK_STATUS) {
+            image = OpenCVUtils.grayScaleMat(image);
+            Mat imageThreshold = new Mat();
+            Imgproc.threshold(image, imageThreshold, 200, 255, Imgproc.THRESH_BINARY);
+            MatOfDouble mean = new MatOfDouble();
+            MatOfDouble standardDeviation = new MatOfDouble();
+            Core.meanStdDev(imageThreshold, mean, standardDeviation);
+            double[] standardDeviationValues = standardDeviation.toArray();
+            double variance = standardDeviationValues.length > 0 ? Math.pow(standardDeviationValues[0], 2) : 0.0;
+            if (variance >= 5000 && variance <= 9000) {
+                status = LIVENESS_BRIGHT_TEST_FAIL_STATUS;
+            } else {
+                Mat faceImage = image.submat(OpenCVUtils.detectBiggestFeatureRect(image, faceClassfier));
+                Imgproc.GaussianBlur(faceImage, faceImage, new Size(11,11), 0);
+                Mat faceThreshold = new Mat();
+                Imgproc.threshold(faceImage, faceThreshold, 200, 255, Imgproc.THRESH_BINARY);
+                Imgproc.erode(faceThreshold, faceThreshold, new Mat(), new Point(-1, -1), 2);
+                Imgproc.dilate(faceThreshold, faceThreshold, new Mat(), new Point(-1, -1), 4);
+                Mat mask = Mat.zeros(faceThreshold.rows(), faceThreshold.cols(), CV_8UC1);
+                Imgproc.circle( mask, new Point(faceThreshold.cols()/2, faceThreshold.rows()/2), Math.min(faceThreshold.cols()/2, faceThreshold.rows()/2), new Scalar(255,255,255), -1, 8, 0 );
+                Mat maskedFaceThreshold = new Mat();
+                faceThreshold.copyTo(maskedFaceThreshold, mask);
+                double totalPixels = maskedFaceThreshold.rows() * maskedFaceThreshold.cols();
+                double brightPixels = Core.countNonZero(maskedFaceThreshold);
+                double brightPercentage = brightPixels / totalPixels;
+                if (brightPercentage > 0.05) {
+                    status = LIVENESS_BRIGHT_TEST_FAIL_STATUS;
+                }
+            }
+        }
+
+        if (status == LIVENESS_OK_STATUS) {
             com.amazonaws.services.rekognition.model.Image amazonImage = new com.amazonaws.services.rekognition.model.Image().withBytes(ByteBuffer.wrap(imageBytes));;
             DetectLabelsRequest request = new DetectLabelsRequest().withImage(amazonImage).withMaxLabels(20).withMinConfidence(75F);
             DetectLabelsResult result = rekognitionClient.detectLabels(request);
@@ -147,18 +185,17 @@ public class ApiController {
                 String labelName = label.getName();
                 for (String spoofingLabel : SPOOFING_LABELS) {
                     if (labelName.equals(spoofingLabel)) {
-                        liveness = false;
+                        status = LIVENESS_SPOOFING_LABELS_DETECTED_STATUS;
                         break;
                     }
                 }
-                if (!liveness) {
+                if (status != LIVENESS_OK_STATUS) {
                     break;
                 }
             }
-            response.set(LIVENESS_PROPERTY_NAME, liveness);
         }
 
-        return response;
+        return Data.object().set(STATUS_PROPERTY_NAME, status);
     }
 
     @Post("check_liveness_instruction")
@@ -261,8 +298,8 @@ public class ApiController {
         }
 
         return Data.object()
-            .set(MATCH_PROPERTY_NAME, status == FACE_MATCH_SUCCESS_STATUS_CODE)
-            .set(STATUS_PROPERTY_NAME, status);
+                .set(MATCH_PROPERTY_NAME, status == FACE_MATCH_SUCCESS_STATUS_CODE)
+                .set(STATUS_PROPERTY_NAME, status);
     }
 
     @Post("verify_identity")
@@ -287,8 +324,8 @@ public class ApiController {
             match = true;
         }
         return Data.object()
-            .set(MATCH_PROPERTY_NAME, match)
-            .set(SIMILARITY_PROPERTY_NAME, similarity);
+                .set(MATCH_PROPERTY_NAME, match)
+                .set(SIMILARITY_PROPERTY_NAME, similarity);
     }
 
     @Post("scan_document_data")
@@ -377,8 +414,6 @@ public class ApiController {
         return pdf417Code;
     }
 
-
-
     private float compareFacesInImages (byte[] image1Bytes, byte[] image2Bytes) {
         com.amazonaws.services.rekognition.model.Image image1 = new com.amazonaws.services.rekognition.model.Image().withBytes(ByteBuffer.wrap(image1Bytes));;
         com.amazonaws.services.rekognition.model.Image image2 = new com.amazonaws.services.rekognition.model.Image().withBytes(ByteBuffer.wrap(image2Bytes));;
@@ -414,7 +449,7 @@ public class ApiController {
         Imgproc.morphologyEx(gray, dilatedImg, Imgproc.MORPH_BLACKHAT, morph);
         gray.release();
         Mat gradX = new Mat();
-        Imgproc.Sobel(dilatedImg, gradX, CvType.CV_32F, 1, 0);
+        Imgproc.Sobel(dilatedImg, gradX, CV_32F, 1, 0);
         dilatedImg.release();
         Core.convertScaleAbs(gradX, gradX, 1, 0);
         Core.MinMaxLocResult minMax = Core.minMaxLoc(gradX);
