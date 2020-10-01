@@ -138,7 +138,7 @@ public class ApiController {
                 double ratio = Math.max(xRatio, yRatio);
                 if (ratio < 0.4) {
                     status = LIVENESS_FACE_TOO_FAR_AWAY_STATUS;
-                } else if (ratio > 0.7) {
+                } else if (ratio > 0.8) {
                     status = LIVENESS_FACE_TOO_CLOSE_STATUS;
                 } else {
                     status = LIVENESS_OK_STATUS;
