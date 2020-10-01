@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.opencv.core.CvType.CV_32F;
-import static org.opencv.core.CvType.CV_8UC1;
 
 @ControllerComponent("v1")
 public class ApiController {
@@ -147,9 +146,9 @@ public class ApiController {
         }
 
         if (status == LIVENESS_OK_STATUS) {
-            image = OpenCVUtils.grayScaleMat(image);
+            Mat grayScaleimage = OpenCVUtils.grayScaleMat(image);
             Mat imageThreshold = new Mat();
-            Imgproc.threshold(image, imageThreshold, 200, 255, Imgproc.THRESH_BINARY);
+            Imgproc.threshold(grayScaleimage, imageThreshold, 200, 255, Imgproc.THRESH_BINARY);
             MatOfDouble mean = new MatOfDouble();
             MatOfDouble standardDeviation = new MatOfDouble();
             Core.meanStdDev(imageThreshold, mean, standardDeviation);
@@ -157,23 +156,6 @@ public class ApiController {
             double variance = standardDeviationValues.length > 0 ? Math.pow(standardDeviationValues[0], 2) : 0.0;
             if (variance >= 5000 && variance <= 9000) {
                 status = LIVENESS_BRIGHT_TEST_FAIL_STATUS;
-            } else {
-                Mat faceImage = image.submat(OpenCVUtils.detectBiggestFeatureRect(image, faceClassfier));
-                Imgproc.GaussianBlur(faceImage, faceImage, new Size(11,11), 0);
-                Mat faceThreshold = new Mat();
-                Imgproc.threshold(faceImage, faceThreshold, 200, 255, Imgproc.THRESH_BINARY);
-                Imgproc.erode(faceThreshold, faceThreshold, new Mat(), new Point(-1, -1), 2);
-                Imgproc.dilate(faceThreshold, faceThreshold, new Mat(), new Point(-1, -1), 4);
-                Mat mask = Mat.zeros(faceThreshold.rows(), faceThreshold.cols(), CV_8UC1);
-                Imgproc.circle( mask, new Point(faceThreshold.cols()/2, faceThreshold.rows()/2), Math.min(faceThreshold.cols()/2, faceThreshold.rows()/2), new Scalar(255,255,255), -1, 8, 0 );
-                Mat maskedFaceThreshold = new Mat();
-                faceThreshold.copyTo(maskedFaceThreshold, mask);
-                double totalPixels = maskedFaceThreshold.rows() * maskedFaceThreshold.cols();
-                double brightPixels = Core.countNonZero(maskedFaceThreshold);
-                double brightPercentage = brightPixels / totalPixels;
-                if (brightPercentage > 0.05) {
-                    status = LIVENESS_BRIGHT_TEST_FAIL_STATUS;
-                }
             }
         }
 
