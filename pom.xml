@@ -74,6 +74,8 @@
                 </executions>
                 <configuration>
                     <repository>luismanuelamengual/biometrics-server</repository>
+                    <username>luismanuelamengual</username>
+                    <password>XXX</password>
                     <tag>${project.version}</tag>
                     <buildArgs>
                         <JAR_FILE>${project.build.finalName}-jar-with-dependencies.jar</JAR_FILE>

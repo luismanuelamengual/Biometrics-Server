@@ -8,6 +8,11 @@ mvn package
 
 sudo docker run -it -d -p 8080:8080 --rm luismanuelamengual/biometrics-server:1.0.14
 
+## Pushing image to docker hub
+
+mvn dockerfile:push
+mvn dockerfile:push -Ddockerfile.useMavenSettingsForAuth=true   
+
 ## Building base image
 
 Start from scratch ubuntu:latest image
