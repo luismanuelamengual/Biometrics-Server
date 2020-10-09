@@ -1,5 +1,13 @@
 # Biometrics-Server
 
+## Building image
+
+mvn package
+
+## Running image
+
+sudo docker run -it -d -p 8080:8080 --rm luismanuelamengual/biometrics-server:1.0.14
+
 ## Building base image
 
 Start from scratch ubuntu:latest image
@@ -26,11 +34,6 @@ docker commit 22e7e0739cdd luismanuelamengual/biometrics-base:latest
 docker tag luismanuelamengual/baseimage:latest luismanuelamengual/baseimage:1.0.1
 docker push luismanuelamengual/baseimage:1.0.1
 </pre>
-
-
-## Building image
-
-mvn package
 
 ## Configuring OpenCV
 
