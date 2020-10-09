@@ -28,6 +28,10 @@ docker push luismanuelamengual/baseimage:1.0.1
 </pre>
 
 
+## Building image
+
+mvn package
+
 ## Configuring OpenCV
 
 Download openCV library (version 4.1.2) from the following link
