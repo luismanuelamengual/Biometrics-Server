@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.biometrics</groupId>
     <artifactId>Biometrics</artifactId>
-    <version>1.0.14</version>
+    <version>1.0.15</version>
     <build>
         <plugins>
             <plugin>
@@ -74,11 +74,13 @@
                 </executions>
                 <configuration>
                     <repository>luismanuelamengual/biometrics-server</repository>
-                    <username>luismanuelamengual</username>
-                    <password>XXX</password>
+                    <username>${dockerhub.username}</username>
+                    <password>${dockerhub.password}</password>
                     <tag>${project.version}</tag>
                     <buildArgs>
-                        <JAR_FILE>${project.build.finalName}-jar-with-dependencies.jar</JAR_FILE>
+                        <JAR_FILE>target/${project.build.finalName}-jar-with-dependencies.jar</JAR_FILE>
+                        <AWS_ACCESS_KEY_ID>${aws.accesskeyid}</AWS_ACCESS_KEY_ID>
+                        <AWS_ACCESS_KEY>${aws.accesskey}</AWS_ACCESS_KEY>
                     </buildArgs>
                 </configuration>
             </plugin>
@@ -103,9 +105,9 @@
 
         <!-- OPENCV -->
         <dependency>
-            <groupId>org.bytedeco</groupId>
+            <groupId>org.openpnp</groupId>
             <artifactId>opencv</artifactId>
-            <version>4.1.2-1.5.2</version>
+            <version>4.3.0-2</version>
         </dependency>
 
         <!-- AMAZON -->

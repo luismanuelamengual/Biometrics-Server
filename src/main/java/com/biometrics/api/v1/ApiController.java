@@ -415,21 +415,19 @@ public class ApiController {
     }
 
     public Mat detectMrz(Mat src){
-        Mat img = src.clone();
-        src.release();
+        Mat img = OpenCVUtils.grayScaleMat(src);
         double ratio = img.height() / 800.0;
         int width = (int) (img.size().width / ratio);
         int height = (int) (img.size().height / ratio);
         Size newSize = new Size(width, height);
         Mat resizedImg = new Mat(newSize, CvType.CV_8UC4);
         Imgproc.resize(img, resizedImg, newSize);
-        Mat gray = new Mat();
-        Imgproc.cvtColor(resizedImg, gray, Imgproc.COLOR_BGR2GRAY);
-        Imgproc.medianBlur(gray, gray, 3);
+        Mat blur = new Mat();
+        Imgproc.medianBlur(resizedImg, blur, 3);
         Mat morph = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(13, 5));
         Mat dilatedImg = new Mat();
-        Imgproc.morphologyEx(gray, dilatedImg, Imgproc.MORPH_BLACKHAT, morph);
-        gray.release();
+        Imgproc.morphologyEx(blur, dilatedImg, Imgproc.MORPH_BLACKHAT, morph);
+        blur.release();
         Mat gradX = new Mat();
         Imgproc.Sobel(dilatedImg, gradX, CV_32F, 1, 0);
         dilatedImg.release();

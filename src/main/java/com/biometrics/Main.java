@@ -1,7 +1,6 @@
 package com.biometrics;
 
 import org.neogroup.warp.WarpApplication;
-import org.opencv.core.Core;
 
 import static org.neogroup.warp.Warp.getLogger;
 
@@ -15,6 +14,10 @@ public class Main {
 
     private static void initializeOpenCV() {
         getLogger().info("Initializing OpenCV library ...");
-        System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+        try {
+            nu.pattern.OpenCV.loadShared();
+        } catch (Throwable ex) {
+            nu.pattern.OpenCV.loadLocally();
+        }
     }
 }
