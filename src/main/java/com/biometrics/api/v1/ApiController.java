@@ -103,7 +103,7 @@ public class ApiController {
 
     @Post("check_liveness_image")
     public DataObject checkLivenesssImage (@Body byte[] imageBytes) throws Exception {
-        Mat image = OpenCVUtils.getMat(imageBytes);
+        Mat image = OpenCVUtils.getImage(imageBytes);
         Rect frontalFaceRect = OpenCVUtils.detectBiggestFeatureRect(image, faceClassfier);
         Rect eyePairRect = OpenCVUtils.detectBiggestFeatureRect(image, eyePairClassifier);
 
@@ -146,7 +146,7 @@ public class ApiController {
         }
 
         if (status == LIVENESS_OK_STATUS) {
-            Mat grayScaleimage = OpenCVUtils.grayScaleMat(image);
+            Mat grayScaleimage = OpenCVUtils.grayScaleImage(image);
             Mat imageThreshold = new Mat();
             Imgproc.threshold(grayScaleimage, imageThreshold, 200, 255, Imgproc.THRESH_BINARY);
             MatOfDouble mean = new MatOfDouble();
@@ -187,7 +187,7 @@ public class ApiController {
             throw new Exception("Unrecognized liveness instruction");
         }
 
-        Mat image = OpenCVUtils.getMat(selfie);
+        Mat image = OpenCVUtils.getImage(selfie);
         Rect frontalFaceRect = OpenCVUtils.detectBiggestFeatureRect(image, faceClassfier);
         Rect eyePairRect = OpenCVUtils.detectBiggestFeatureRect(image, eyePairClassifier);
         Rect faceRect = null;
@@ -203,7 +203,7 @@ public class ApiController {
                 faceRect = rightFaceRect;
                 faceInstruction = RIGHT_PROFILE_FACE_INSTRUCTION;
             } else {
-                Rect leftFaceRect = OpenCVUtils.detectBiggestFeatureRect(OpenCVUtils.flipMat(image), profileFaceClassifier);
+                Rect leftFaceRect = OpenCVUtils.detectBiggestFeatureRect(OpenCVUtils.flipImage(image), profileFaceClassifier);
                 if (leftFaceRect != null) {
                     leftFaceRect.x = image.width() - leftFaceRect.x - leftFaceRect.width;
                 }
@@ -286,13 +286,13 @@ public class ApiController {
 
     @Post("verify_identity")
     public DataObject verifyIdentity(@Parameter("selfie") byte[] selfie, @Parameter("documentFront") byte[] documentFront, @Parameter("documentBack") byte[] documentBack) {
-        Mat selfieMat = OpenCVUtils.detectBiggestFeature(OpenCVUtils.getMat(selfie), faceClassfier);
+        Mat selfieMat = OpenCVUtils.detectBiggestFeature(OpenCVUtils.getImage(selfie), faceClassfier);
         if (selfieMat == null || selfieMat.empty()) {
             throw new RuntimeException ("No face found in selfie");
         }
-        Mat documentFaceMat = OpenCVUtils.detectBiggestFeature(OpenCVUtils.getMat(documentFront), faceClassfier);
+        Mat documentFaceMat = OpenCVUtils.detectBiggestFeature(OpenCVUtils.getImage(documentFront), faceClassfier);
         if (documentFaceMat == null || documentFaceMat.empty()) {
-            documentFaceMat = OpenCVUtils.detectBiggestFeature(OpenCVUtils.getMat(documentBack), faceClassfier);
+            documentFaceMat = OpenCVUtils.detectBiggestFeature(OpenCVUtils.getImage(documentBack), faceClassfier);
         }
         if (documentFaceMat == null || documentFaceMat.empty()) {
             throw new RuntimeException ("No face found in document");
@@ -359,7 +359,7 @@ public class ApiController {
     private String getMRZCodeFromImage (byte[] imageBytes) throws Exception {
         String mrzCode = null;
         if (imageBytes.length > 0) {
-            Mat mrzMat = detectMrz(OpenCVUtils.getMat(imageBytes));
+            Mat mrzMat = detectMrz(OpenCVUtils.getImage(imageBytes));
             if (mrzMat != null) {
                 Image mrzImage = OpenCVUtils.getBufferedImage(mrzMat);
                 String mrzCodeText = tesseract.doOCR((BufferedImage)mrzImage);
@@ -415,7 +415,7 @@ public class ApiController {
     }
 
     public Mat detectMrz(Mat src){
-        Mat img = OpenCVUtils.grayScaleMat(src);
+        Mat img = OpenCVUtils.grayScaleImage(src);
         double ratio = img.height() / 800.0;
         int width = (int) (img.size().width / ratio);
         int height = (int) (img.size().height / ratio);
@@ -484,7 +484,7 @@ public class ApiController {
         }
 
         if (mrzMat != null && !mrzMat.empty()) {
-            mrzMat = OpenCVUtils.sharpenMat(mrzMat);
+            mrzMat = OpenCVUtils.sharpenImage(mrzMat);
         }
         return mrzMat;
     }
