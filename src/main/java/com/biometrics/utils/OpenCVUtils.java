@@ -64,7 +64,7 @@ public final class OpenCVUtils {
         return flippedImage;
     }
 
-    public static Mat resizeImage(Mat image, int maxWidth, int maxHeight) {
+    public static Mat resizeImage(Mat image, int maxWidth, int maxHeight, int minWidth, int minHeight) {
         Size imageSize = image.size();
         double newImageWidth = imageSize.width;
         double newImageHeight = imageSize.height;
@@ -77,6 +77,18 @@ public final class OpenCVUtils {
 
         if (maxHeight > 0 && newImageHeight > maxHeight) {
             double ratio = (maxHeight / newImageHeight);
+            newImageWidth *= ratio;
+            newImageHeight *= ratio;
+        }
+
+        if (minWidth > 0 && newImageWidth < minWidth) {
+            double ratio = minWidth / newImageWidth;
+            newImageWidth *= ratio;
+            newImageHeight *= ratio;
+        }
+
+        if (minHeight > 0 && newImageHeight < minHeight) {
+            double ratio = minHeight / newImageHeight;
             newImageWidth *= ratio;
             newImageHeight *= ratio;
         }
