@@ -7,8 +7,13 @@ import com.amazonaws.services.rekognition.model.*;
 import com.biometrics.utils.MRZParser;
 import com.biometrics.utils.OpenCVUtils;
 import com.biometrics.utils.PDF417Parser;
-import com.dynamsoft.barcode.BarcodeReader;
-import com.dynamsoft.barcode.TextResult;
+import com.google.zxing.BinaryBitmap;
+import com.google.zxing.DecodeHintType;
+import com.google.zxing.LuminanceSource;
+import com.google.zxing.Result;
+import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
+import com.google.zxing.common.HybridBinarizer;
+import com.google.zxing.pdf417.PDF417Reader;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.util.LoadLibs;
 import org.neogroup.warp.controllers.ControllerComponent;
@@ -22,14 +27,18 @@ import org.opencv.core.*;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 
+import javax.imageio.ImageIO;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.opencv.core.CvType.CV_32F;
+import static org.opencv.core.CvType.CV_64F;
 
 @ControllerComponent("v1")
 public class ApiController {
@@ -69,6 +78,7 @@ public class ApiController {
     private CascadeClassifier eyePairClassifier;
     private Tesseract tesseract;
     private AmazonRekognition rekognitionClient;
+    private PDF417Reader pdf417Reader;
 
     private static final String[] SPOOFING_LABELS = new String[] {
         "Phone",
@@ -99,6 +109,7 @@ public class ApiController {
         tesseract = new Tesseract();
         tesseract.setDatapath(LoadLibs.extractTessResources("tessdata").getAbsolutePath());
         tesseract.setLanguage("spa");
+        pdf417Reader = new PDF417Reader();
     }
 
     @Post("check_liveness_image")
@@ -356,6 +367,46 @@ public class ApiController {
         return response;
     }
 
+    @Post("scan_barcode_data")
+    public DataObject scanBarcode (@Body byte[] imageBytes) throws Exception {
+        DataObject response = null;
+        String pdf417RawText = getPDF417CodeFromImage(imageBytes);
+        if (pdf417RawText != null) {
+            try {
+                Map<String, Object> documentInformation = PDF417Parser.parseCode(pdf417RawText);
+                if (documentInformation != null && !documentInformation.isEmpty()){
+                    response = Data.object()
+                            .set(RAW_PROPERTY_NAME, pdf417RawText)
+                            .set(INFORMATION_PROPERTY_NAME, documentInformation);
+                }
+            } catch (Exception ex) {}
+        }
+        if (response == null) {
+            throw new RuntimeException("Barcode data could not be read");
+        }
+        return response;
+    }
+
+    @Post("scan_mrz_data")
+    public DataObject scanMRZ (@Body byte[] imageBytes) throws Exception {
+        DataObject response = null;
+        String mrzRawText = getMRZCodeFromImage(imageBytes);
+        if (mrzRawText != null) {
+            try {
+                Map<String, Object> documentInformation = MRZParser.parseCode(mrzRawText);
+                if (documentInformation != null && !documentInformation.isEmpty()){
+                    response = Data.object()
+                            .set(RAW_PROPERTY_NAME, mrzRawText)
+                            .set(INFORMATION_PROPERTY_NAME, documentInformation);
+                }
+            } catch (Exception ex) {}
+        }
+        if (response == null) {
+            throw new RuntimeException("MRZ data could not be read");
+        }
+        return response;
+    }
+
     private String getMRZCodeFromImage (byte[] imageBytes) throws Exception {
         String mrzCode = null;
         if (imageBytes.length > 0) {
@@ -383,13 +434,20 @@ public class ApiController {
     private String getPDF417CodeFromImage(byte[] imageBytes) throws Exception {
         String pdf417Code = null;
         if (imageBytes.length > 0) {
-            BarcodeReader dbr = new BarcodeReader();
-            TextResult[] result = dbr.decodeFileInMemory(imageBytes, "");
-            if (result != null && result.length > 0) {
-                TextResult barcodeData = result[0];
-                int dataLimitIndex = barcodeData.barcodeText.indexOf("***");
-                if (dataLimitIndex > 0) {
-                    pdf417Code = barcodeData.barcodeText.substring(0, dataLimitIndex);
+            Mat image = OpenCVUtils.getImage(imageBytes);
+            Mat barcodeImage = detectPDF417(image);
+            if (barcodeImage != null) {
+                byte[] barcodeImageBytes = OpenCVUtils.getImageBytes(barcodeImage);
+                try (ByteArrayInputStream bais = new ByteArrayInputStream(barcodeImageBytes)) {
+                    LuminanceSource source = new BufferedImageLuminanceSource(ImageIO.read(bais));
+                    BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+                    Result result = this.pdf417Reader.decode(bitmap, new EnumMap<>(DecodeHintType.class));
+                    if (result != null) {
+                        String resultText = result.getText();
+                        if (resultText != null && !resultText.isEmpty()) {
+                            pdf417Code = resultText;
+                        }
+                    }
                 }
             }
         }
@@ -412,6 +470,80 @@ public class ApiController {
             }
         } catch (Exception ex) {}
         return similarity;
+    }
+
+    public Mat detectPDF417(Mat src){
+        Mat barcodeImage = null;
+        Mat grayScaleImage = OpenCVUtils.grayScaleImage(src);
+        Mat resizedImage = OpenCVUtils.resizeImage(grayScaleImage, 800, 800, 0, 0);
+        Mat image = resizedImage.clone();
+        Imgproc.GaussianBlur(image, image, new Size(13, 13), 0);
+        Imgproc.threshold(image, image, 70, 255, Imgproc.THRESH_BINARY_INV);
+        Imgproc.erode(image, image, new Mat(), new Point(-1, -1), 4);
+        Imgproc.dilate(image, image, new Mat(), new Point(-1, -1), 4);
+        List<MatOfPoint> contours = new ArrayList<>();
+        Mat hierarchy = new Mat();
+        Imgproc.findContours(image, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+        RotatedRect rect1 = null;
+        RotatedRect rect2 = null;
+        List<RotatedRect> rotatedRects = new ArrayList<>();
+        for (MatOfPoint contour : contours) {
+            MatOfPoint2f contour2f = new MatOfPoint2f(contour.toArray());
+            RotatedRect rect = Imgproc.minAreaRect(contour2f);
+            double rectAspectRatioWidth = rect.size.width / rect.size.height;
+            double rectAspectRatioHeight = rect.size.height / rect.size.width;
+            if (rectAspectRatioWidth > 2 || rectAspectRatioHeight > 2) {
+                for (RotatedRect possibleRect : rotatedRects) {
+                    if (Math.abs(possibleRect.angle - rect.angle) < 5 && Math.abs(possibleRect.size.width - rect.size.width) < 8 && Math.abs(possibleRect.size.height - rect.size.height) < 8) {
+                        rect1 = possibleRect;
+                        rect2 = rect;
+                        break;
+                    } else if ((Math.abs(possibleRect.angle - rect.angle + 90) < 5 || Math.abs(possibleRect.angle - rect.angle - 90) < 5) && Math.abs(possibleRect.size.width - rect.size.height) < 8 && Math.abs(possibleRect.size.height - rect.size.width) < 8) {
+                        rect1 = possibleRect;
+                        rect2 = rect;
+                        break;
+                    }
+                }
+                if (rect1 != null && rect2 != null) {
+                    break;
+                } else {
+                    rotatedRects.add(rect);
+                }
+            }
+        }
+
+        if (rect1 != null && rect2 != null) {
+            Point point1 = rect1.center;
+            Point point2 = rect2.center;
+            Size originalImageSize = src.size();
+            Size resizedImageSize = resizedImage.size();
+            Point originalImageCenterPoint = new Point(originalImageSize.width / 2, originalImageSize.height / 2);
+            double xMultiplier = originalImageSize.width / resizedImageSize.width;
+            double yMultiplier = originalImageSize.height / resizedImageSize.height;
+            double xDiff = Math.abs(point1.x - point2.x);
+            double yDiff = Math.abs(point1.y - point2.y);
+            double barsWidth = Math.sqrt(Math.pow(xDiff, 2) + Math.pow(yDiff, 2));
+            double barsHeight = Math.max(Math.max(rect1.size.width, rect1.size.height), Math.max(rect2.size.width, rect2.size.height));
+            double rotatedRectAngle = (Math.atan2(yDiff, xDiff) * (180 / Math.PI));
+            if ((point2.x > point1.x && point2.y < point1.y) || (point1.x > point2.x && point1.y < point2.y)) {
+                rotatedRectAngle = -rotatedRectAngle;
+            }
+            Size rotatedRectSize = new Size(barsWidth * 1.4 * xMultiplier, barsHeight * 1.4 * yMultiplier);
+            Mat transformedImg = new Mat();
+            Mat translationMatrix2D = new Mat(2, 3, CV_64F);
+            translationMatrix2D.put(0, 0, 1);
+            translationMatrix2D.put(0, 1, 0);
+            translationMatrix2D.put(0, 2, (originalImageSize.width / 2) - ((point1.x + point2.x) / 2) * xMultiplier);
+            translationMatrix2D.put(1, 0, 0);
+            translationMatrix2D.put(1, 1, 1);
+            translationMatrix2D.put(1, 2, (originalImageSize.height / 2) - ((point1.y + point2.y) / 2) * yMultiplier);
+            Imgproc.warpAffine(src, transformedImg, translationMatrix2D, originalImageSize, Imgproc.INTER_LINEAR, Core.BORDER_CONSTANT);
+            Mat rotatedMatrix2D = Imgproc.getRotationMatrix2D(originalImageCenterPoint, rotatedRectAngle, 1.0);
+            Imgproc.warpAffine(transformedImg, transformedImg, rotatedMatrix2D, originalImageSize, Imgproc.INTER_CUBIC, Core.BORDER_CONSTANT);
+            Rect rect = new Rect((int)originalImageCenterPoint.x - ((int)rotatedRectSize.width / 2),(int)originalImageCenterPoint.y - ((int)rotatedRectSize.height / 2), (int)rotatedRectSize.width, (int)rotatedRectSize.height);
+            barcodeImage = transformedImg.submat(rect);
+        }
+        return barcodeImage;
     }
 
     public Mat detectMrz(Mat src){
