@@ -479,7 +479,7 @@ public class ApiController {
         Mat resizedImage = OpenCVUtils.resizeImage(grayScaleImage, 800, 800, 0, 0);
         Mat image = resizedImage.clone();
         Imgproc.GaussianBlur(image, image, new Size(13, 13), 0);
-        Imgproc.threshold(image, image, 70, 255, Imgproc.THRESH_BINARY_INV);
+        Imgproc.threshold(image, image, 90, 255, Imgproc.THRESH_BINARY_INV);
         Imgproc.dilate(image, image, new Mat(), new Point(-1, -1), 13);
         Imgproc.erode(image, image, new Mat(), new Point(-1, -1), 8);
         List<MatOfPoint> contours = new ArrayList<>();

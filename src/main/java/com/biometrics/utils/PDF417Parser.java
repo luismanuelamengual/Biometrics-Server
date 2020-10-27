@@ -6,8 +6,14 @@ import java.util.regex.Pattern;
 public class PDF417Parser {
 
     private static TimeZone GMT_TIME_ZONE = TimeZone.getTimeZone("GMT");
-    private static Pattern PDF417_PATTERN_TYPE_1 = Pattern.compile("^\\d+@(?:[a-zA-Z]|\\s)+@(?:[a-zA-Z]|\\s)+@(?:M|F)@\\d+@\\w@\\d\\d\\/\\d\\d\\/\\d{4}@");
-    private static Pattern PDF417_PATTERN_TYPE_2 = Pattern.compile("^@\\d+\\s*@[A-Z]@\\d@(?:[a-zA-Z]|\\s)+@(?:[a-zA-Z]|\\s)+@(?:[a-zA-Z]|\\s)+@\\d\\d\\/\\d\\d\\/\\d{4}@(?:M|F)@");
+    private static String NAME_PATTERN = "(?:[a-zA-Z]|\\s|`)+";
+    private static String NUMBER_PATTERN = "\\d+";
+    private static String GENDER_PATTERN = "(?:M|F)";
+    private static String DATE_PATTERN = "\\d\\d\\/\\d\\d\\/\\d{4}";
+    private static String UPPER_CASE_LETTER_PATTERN = "[A-Z]";
+    private static String DIGIT_PATTERN = "\\d";
+    private static Pattern PDF417_PATTERN_TYPE_1 = Pattern.compile("^" + NUMBER_PATTERN + "@" + NAME_PATTERN + "@" + NAME_PATTERN + "@" + GENDER_PATTERN + "@" + NUMBER_PATTERN + "@" + UPPER_CASE_LETTER_PATTERN + "@" + DATE_PATTERN);
+    private static Pattern PDF417_PATTERN_TYPE_2 = Pattern.compile("^@" + NUMBER_PATTERN + "\\s*@" + UPPER_CASE_LETTER_PATTERN +"@" + DIGIT_PATTERN + "@" + NAME_PATTERN + "@" + NAME_PATTERN + "@" + NAME_PATTERN + "@" + DATE_PATTERN + "@" + GENDER_PATTERN + "@");
 
     public static Map<String, Object> parseCode(String pdf417code) {
         pdf417code = pdf417code.trim();
