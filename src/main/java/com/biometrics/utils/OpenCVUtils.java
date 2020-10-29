@@ -7,13 +7,11 @@ import org.opencv.imgproc.CLAHE;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -41,20 +39,10 @@ public final class OpenCVUtils {
     }
 
     public static Image getBufferedImage(Mat image) {
-        if (image.type() != 0) {
-            image.convertTo(image, CV_8U, 255);
-        }
-        int type = BufferedImage.TYPE_BYTE_GRAY;
-        if (image.channels() > 1) {
-            Mat m2 = new Mat();
-            Imgproc.cvtColor(image,m2,Imgproc.COLOR_BGR2RGB);
-            type = BufferedImage.TYPE_3BYTE_BGR;
-            image = m2;
-        }
-        byte [] b = new byte[image.channels()*image.cols()*image.rows()];
-        image.get(0,0,b);
-        BufferedImage bufferedImage = new BufferedImage(image.cols(),image.rows(), type);
-        bufferedImage.getRaster().setDataElements(0, 0, image.cols(),image.rows(), b);
+        BufferedImage bufferedImage = null;
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(getImageBytes(image))) {
+            bufferedImage = ImageIO.read(bais);
+        } catch(Exception ex) {}
         return bufferedImage;
     }
 

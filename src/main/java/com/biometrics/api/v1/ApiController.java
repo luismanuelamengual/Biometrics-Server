@@ -37,8 +37,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.opencv.core.CvType.CV_32F;
-import static org.opencv.core.CvType.CV_64F;
+import static org.opencv.core.CvType.*;
 
 @ControllerComponent("v1")
 public class ApiController {
@@ -480,8 +479,8 @@ public class ApiController {
         Mat image = resizedImage.clone();
         Imgproc.GaussianBlur(image, image, new Size(13, 13), 0);
         Imgproc.threshold(image, image, 90, 255, Imgproc.THRESH_BINARY_INV);
-        Imgproc.dilate(image, image, new Mat(), new Point(-1, -1), 13);
-        Imgproc.erode(image, image, new Mat(), new Point(-1, -1), 8);
+        Imgproc.dilate(image, image, new Mat(), new Point(-1, -1), 14);
+        Imgproc.erode(image, image, new Mat(), new Point(-1, -1), 9);
         List<MatOfPoint> contours = new ArrayList<>();
         List<RotatedRect> rotatedRects = new ArrayList<>();
         Imgproc.findContours(image, contours, new Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
@@ -504,7 +503,7 @@ public class ApiController {
             double xMultiplier = originalImageSize.width / resizedImageSize.width;
             double yMultiplier = originalImageSize.height / resizedImageSize.height;
             for (RotatedRect rect : rotatedRects) {
-                double rectWidth = Math.max(rect.size.width, rect.size.height) * xMultiplier * 1.1;
+                double rectWidth = Math.max(rect.size.width, rect.size.height) * xMultiplier * 1.2;
                 double rectHeight = Math.min(rect.size.width, rect.size.height) * yMultiplier * 1.1;
                 Size holderSize = new Size(rectWidth, rectWidth);
                 translationMatrix2D.put(0, 0, 1);
