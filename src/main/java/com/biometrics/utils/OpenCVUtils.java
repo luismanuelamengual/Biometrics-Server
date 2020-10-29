@@ -46,47 +46,6 @@ public final class OpenCVUtils {
         return bufferedImage;
     }
 
-    public static Mat flipImage(Mat image) {
-        Mat flippedImage = new Mat();
-        Core.flip(image, flippedImage, 1);
-        return flippedImage;
-    }
-
-    public static Mat resizeImage(Mat image, int maxWidth, int maxHeight, int minWidth, int minHeight) {
-        Size imageSize = image.size();
-        double newImageWidth = imageSize.width;
-        double newImageHeight = imageSize.height;
-
-        if (maxWidth > 0 && newImageWidth > maxWidth) {
-            double ratio = (maxWidth / newImageWidth);
-            newImageWidth *= ratio;
-            newImageHeight *= ratio;
-        }
-
-        if (maxHeight > 0 && newImageHeight > maxHeight) {
-            double ratio = (maxHeight / newImageHeight);
-            newImageWidth *= ratio;
-            newImageHeight *= ratio;
-        }
-
-        if (minWidth > 0 && newImageWidth < minWidth) {
-            double ratio = minWidth / newImageWidth;
-            newImageWidth *= ratio;
-            newImageHeight *= ratio;
-        }
-
-        if (minHeight > 0 && newImageHeight < minHeight) {
-            double ratio = minHeight / newImageHeight;
-            newImageWidth *= ratio;
-            newImageHeight *= ratio;
-        }
-
-        Size newImageSize = new Size(newImageWidth, newImageHeight);
-        Mat resizedImage = new Mat(newImageSize, CvType.CV_8UC4);
-        Imgproc.resize(image, resizedImage, newImageSize);
-        return resizedImage;
-    }
-
     public static MatOfRect detectFeatures(Mat image, CascadeClassifier classifier) {
         MatOfRect features = new MatOfRect();
         classifier.detectMultiScale(image, features);
@@ -133,10 +92,17 @@ public final class OpenCVUtils {
         Imgproc.rectangle(image, new Point(feature.x, feature.y), new Point(feature.x + feature.width, feature.y + feature.height), getScalarFromColor(color),3);
     }
 
+    public static void drawContours(Mat image, List<MatOfPoint> contours, Color color, boolean fill) {
+        Scalar colorScalar = getScalarFromColor(color);
+        for (int i = 0; i < contours.size(); i++) {
+            Imgproc.drawContours(image, contours, i, colorScalar, fill ? -1 : 1);
+        }
+    }
+
     public static void drawContour(Mat image, MatOfPoint contour, Color color, boolean fill) {
-        List<MatOfPoint> tmp = new ArrayList<>();
-        tmp.add(contour);
-        Imgproc.drawContours(image, tmp, 0, getScalarFromColor(color), fill ? -1 : 1);
+        List<MatOfPoint> contours = new ArrayList<>();
+        contours.add(contour);
+        drawContours(image, contours, color, fill);
     }
 
     public static boolean containsRect(Rect feature, Rect innerFeature) {
@@ -167,11 +133,11 @@ public final class OpenCVUtils {
         return largestContour;
     }
 
-    public static void displayImage(Mat image) {
-        displayImage(image, "Image");
+    public static void display(Mat image) {
+        display(image, "Image");
     }
 
-    public static void displayImage(Mat image, String label) {
+    public static void display(Mat image, String label) {
         Image bufferedImage = getBufferedImage(image);
         ImageIcon icon = new ImageIcon(bufferedImage);
         JFrame frame = new JFrame(label);
@@ -184,7 +150,42 @@ public final class OpenCVUtils {
         frame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
     }
 
-    public static Mat enhanceImage(Mat src, double clipPercentage){
+    public static Mat resize(Mat image, int maxWidth, int maxHeight, int minWidth, int minHeight) {
+        Size imageSize = image.size();
+        double newImageWidth = imageSize.width;
+        double newImageHeight = imageSize.height;
+
+        if (maxWidth > 0 && newImageWidth > maxWidth) {
+            double ratio = (maxWidth / newImageWidth);
+            newImageWidth *= ratio;
+            newImageHeight *= ratio;
+        }
+
+        if (maxHeight > 0 && newImageHeight > maxHeight) {
+            double ratio = (maxHeight / newImageHeight);
+            newImageWidth *= ratio;
+            newImageHeight *= ratio;
+        }
+
+        if (minWidth > 0 && newImageWidth < minWidth) {
+            double ratio = minWidth / newImageWidth;
+            newImageWidth *= ratio;
+            newImageHeight *= ratio;
+        }
+
+        if (minHeight > 0 && newImageHeight < minHeight) {
+            double ratio = minHeight / newImageHeight;
+            newImageWidth *= ratio;
+            newImageHeight *= ratio;
+        }
+
+        Size newImageSize = new Size(newImageWidth, newImageHeight);
+        Mat resizedImage = new Mat(newImageSize, CvType.CV_8UC4);
+        Imgproc.resize(image, resizedImage, newImageSize);
+        return resizedImage;
+    }
+
+    public static Mat enhance(Mat src, double clipPercentage){
         int histSize = 256;
         double alpha, beta;
         double minGray, maxGray;
@@ -246,55 +247,43 @@ public final class OpenCVUtils {
         return result;
     }
 
-    public static Mat sharpenImage(Mat src){
+    public static Mat sharpen(Mat src){
         Mat sharped = new Mat();
         Imgproc.GaussianBlur(src, sharped, new Size(0, 0), 3);
         Core.addWeighted(src, 1.5, sharped, -0.5, 0, sharped);
         return sharped;
     }
 
-    public static Mat smoothImage(Mat image, int smothSize) {
+    public static Mat smooth(Mat image, int smothSize) {
         Mat blurred = new Mat();
         Imgproc.GaussianBlur(image, blurred, new Size(smothSize, smothSize), 0);
         return blurred;
     }
 
-    public static Mat grayScaleImage(Mat src){
+    public static Mat grayScale(Mat src){
         Mat result = new Mat();
         Imgproc.cvtColor(src, result, Imgproc.COLOR_BGR2GRAY);
         return result;
     }
 
-    public static Mat blackAndWhiteImage(Mat src) {
-        return blackAndWhiteImage(src, 127);
+    public static Mat blackAndWhite(Mat src) {
+        return blackAndWhite(src, 127);
     }
 
-    public static Mat blackAndWhiteImage(Mat src, double threshold) {
-        Mat result = grayScaleImage(src);
+    public static Mat blackAndWhite(Mat src, double threshold) {
+        Mat result = grayScale(src);
         Imgproc.threshold(result, result, threshold, 255, Imgproc.THRESH_BINARY);
         return result;
     }
 
-    public static Mat adaptiveBlackAndWhiteImage(Mat src) {
-        Mat result = grayScaleImage(src);
-        Imgproc.adaptiveThreshold(result, result, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 115, 1);
-        return result;
-    }
-
-    public static Mat equalizeImage(Mat src) {
+    public static Mat equalize(Mat src) {
         CLAHE clahe = Imgproc.createCLAHE(2.0, new Size(8, 8));
         Mat equalized = new Mat();
         clahe.apply(src, equalized);
         return equalized;
     }
 
-    public static Mat enhanceImageEdges(Mat src) {
-        Mat enhanced = new Mat();
-        Imgproc.Laplacian(src, enhanced, CV_8U, 3, 1, 0);
-        return enhanced;
-    }
-
-    public static Mat getLBPImage(Mat src) {
+    public static Mat getLBP(Mat src) {
         Mat lbp = Mat.zeros(src.size(), CV_8U);
         int rows = src.rows();
         int cols = src.cols();

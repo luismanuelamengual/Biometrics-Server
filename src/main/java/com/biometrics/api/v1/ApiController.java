@@ -156,7 +156,7 @@ public class ApiController {
         }
 
         if (status == LIVENESS_OK_STATUS) {
-            Mat grayScaleimage = OpenCVUtils.grayScaleImage(image);
+            Mat grayScaleimage = OpenCVUtils.grayScale(image);
             Mat imageThreshold = new Mat();
             Imgproc.threshold(grayScaleimage, imageThreshold, 200, 255, Imgproc.THRESH_BINARY);
             MatOfDouble mean = new MatOfDouble();
@@ -213,7 +213,8 @@ public class ApiController {
                 faceRect = rightFaceRect;
                 faceInstruction = RIGHT_PROFILE_FACE_INSTRUCTION;
             } else {
-                Rect leftFaceRect = OpenCVUtils.detectBiggestFeatureRect(OpenCVUtils.flipImage(image), profileFaceClassifier);
+                Core.flip(image, image, 1);
+                Rect leftFaceRect = OpenCVUtils.detectBiggestFeatureRect(image, profileFaceClassifier);
                 if (leftFaceRect != null) {
                     leftFaceRect.x = image.width() - leftFaceRect.x - leftFaceRect.width;
                 }
@@ -474,8 +475,8 @@ public class ApiController {
 
     public List<Mat> detectPDF417(Mat src){
         List<Mat> barcodeImageCandidates = new ArrayList<>();
-        Mat grayScaleImage = OpenCVUtils.grayScaleImage(src);
-        Mat resizedImage = OpenCVUtils.resizeImage(grayScaleImage, 800, 800, 0, 0);
+        Mat grayScaleImage = OpenCVUtils.grayScale(src);
+        Mat resizedImage = OpenCVUtils.resize(grayScaleImage, 800, 800, 0, 0);
         Mat image = resizedImage.clone();
         Imgproc.GaussianBlur(image, image, new Size(13, 13), 0);
         Imgproc.threshold(image, image, 90, 255, Imgproc.THRESH_BINARY_INV);
@@ -522,7 +523,7 @@ public class ApiController {
     }
 
     public Mat detectMrz(Mat src){
-        Mat img = OpenCVUtils.grayScaleImage(src);
+        Mat img = OpenCVUtils.grayScale(src);
         double ratio = img.height() / 800.0;
         int width = (int) (img.size().width / ratio);
         int height = (int) (img.size().height / ratio);
@@ -591,7 +592,7 @@ public class ApiController {
         }
 
         if (mrzMat != null && !mrzMat.empty()) {
-            mrzMat = OpenCVUtils.sharpenImage(mrzMat);
+            mrzMat = OpenCVUtils.sharpen(mrzMat);
         }
         return mrzMat;
     }
