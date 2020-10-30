@@ -4,6 +4,7 @@ import com.amazonaws.services.rekognition.AmazonRekognition;
 import com.amazonaws.services.rekognition.AmazonRekognitionClientBuilder;
 import com.amazonaws.services.rekognition.model.Label;
 import com.amazonaws.services.rekognition.model.*;
+import com.biometrics.ResponseException;
 import com.biometrics.utils.MRZParser;
 import com.biometrics.utils.OpenCVUtils;
 import com.biometrics.utils.PDF417Parser;
@@ -299,14 +300,14 @@ public class ApiController {
     public DataObject verifyIdentity(@Parameter("selfie") byte[] selfie, @Parameter("documentFront") byte[] documentFront, @Parameter("documentBack") byte[] documentBack) {
         Mat selfieMat = OpenCVUtils.detectBiggestFeature(OpenCVUtils.getImage(selfie), faceClassfier);
         if (selfieMat == null || selfieMat.empty()) {
-            throw new RuntimeException ("No face found in selfie");
+            throw new ResponseException("No face found in selfie");
         }
         Mat documentFaceMat = OpenCVUtils.detectBiggestFeature(OpenCVUtils.getImage(documentFront), faceClassfier);
         if (documentFaceMat == null || documentFaceMat.empty()) {
             documentFaceMat = OpenCVUtils.detectBiggestFeature(OpenCVUtils.getImage(documentBack), faceClassfier);
         }
         if (documentFaceMat == null || documentFaceMat.empty()) {
-            throw new RuntimeException ("No face found in document");
+            throw new ResponseException ("No face found in document");
         }
 
         byte[] selfieBytes = OpenCVUtils.getImageBytes(selfieMat);
@@ -362,7 +363,7 @@ public class ApiController {
         }
 
         if (response == null) {
-            throw new RuntimeException("Document data could not be read");
+            throw new ResponseException("Document data could not be read");
         }
         return response;
     }
@@ -382,7 +383,7 @@ public class ApiController {
             } catch (Exception ex) {}
         }
         if (response == null) {
-            throw new RuntimeException("Barcode data could not be read");
+            throw new ResponseException("Barcode data could not be read");
         }
         return response;
     }
@@ -402,7 +403,7 @@ public class ApiController {
             } catch (Exception ex) {}
         }
         if (response == null) {
-            throw new RuntimeException("MRZ data could not be read");
+            throw new ResponseException("MRZ data could not be read");
         }
         return response;
     }

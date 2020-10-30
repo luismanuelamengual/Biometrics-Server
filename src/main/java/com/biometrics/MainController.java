@@ -12,8 +12,6 @@ import org.neogroup.warp.controllers.routing.*;
 import org.neogroup.warp.data.Data;
 import org.neogroup.warp.data.DataObject;
 
-import java.lang.reflect.InvocationTargetException;
-
 import static org.neogroup.warp.Warp.getProperty;
 
 @ControllerComponent
@@ -38,35 +36,36 @@ public class MainController {
 
     @Before("*")
     public void checkSession(Request request, Response response) {
-        String requestUri = request.getRequestURI();
         String authorizationHeader = request.getHeader("Authorization");
         if (authorizationHeader == null) {
             response.setStatus(401);
-            throw new RuntimeException("Missing authorization header");
+            throw new ResponseException("Missing authorization header");
         }
         String[] authorizationTokens = authorizationHeader.split(" ");
         if (!authorizationTokens[0].equals("Bearer")) {
             response.setStatus(401);
-            throw new RuntimeException("Authorization header is expecting a JWT token");
+            throw new ResponseException("Authorization header is expecting a JWT token");
         }
         if (authorizationTokens.length < 2) {
             response.setStatus(401);
-            throw new RuntimeException("Invalid authorization header");
+            throw new ResponseException("Invalid authorization header");
         }
         String token = authorizationTokens[1];
         try {
             jwtVerifier.verify(token);
         } catch (JWTVerificationException verificationException) {
             response.setStatus(401);
-            throw new RuntimeException("Invalid authentication token");
+            throw new ResponseException("Invalid authentication token");
         }
     }
 
     @Error("*")
     public DataObject errorHandler(Throwable exception) {
-        exception.printStackTrace();
-        while (exception instanceof InvocationTargetException) {
-            exception = ((InvocationTargetException) exception).getTargetException();
+        if (exception.getCause() != null) {
+            exception = exception.getCause();
+        }
+        if (!(exception instanceof ResponseException)) {
+            exception.printStackTrace();
         }
         DataObject result = Data.object();
         result.set("success", false);
