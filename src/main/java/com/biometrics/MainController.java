@@ -29,7 +29,7 @@ public class MainController {
     private static final String SUCCESS_PARAMETER_NAME = "success";
     private static final String DATA_PARAMETER_NAME = "data";
     private static final String MESSAGE_PARAMETER_NAME = "message";
-    private static final String BIOMETRICS_ACCESS_TAG_NAME = "biometrics.access";
+    private static final String SERVICE_TAG_NAME = "service";
 
     private JWTVerifier jwtVerifier;
     private static FluentLogger LOG = FluentLogger.getLogger("biometrics");
@@ -66,10 +66,7 @@ public class MainController {
         String token = authorizationTokens[1];
         try {
             jwtVerifier.verify(token);
-            Map<String, Object> parameters = new HashMap<>();
-            parameters.put(REQUEST_URI_PARAMETER_NAME, request.getRequestURI());
-            parameters.put(API_KEY_PARAMETER_NAME, token);
-            LOG.log(BIOMETRICS_ACCESS_TAG_NAME, parameters, System.currentTimeMillis());
+            request.set(API_KEY_PARAMETER_NAME, token);
         } catch (JWTVerificationException verificationException) {
             response.setStatus(401);
             throw new ResponseException("Invalid authentication token");
@@ -77,13 +74,20 @@ public class MainController {
     }
 
     @Error("*")
-    public DataObject errorHandler(Throwable exception) {
+    public DataObject errorHandler(Request request, Throwable exception) {
         if (exception.getCause() != null) {
             exception = exception.getCause();
         }
         if (!(exception instanceof ResponseException)) {
             exception.printStackTrace();
         }
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put(REQUEST_URI_PARAMETER_NAME, request.getRequestURI());
+        parameters.put(API_KEY_PARAMETER_NAME, request.get(API_KEY_PARAMETER_NAME));
+        parameters.put(SUCCESS_PARAMETER_NAME, false);
+        parameters.put(MESSAGE_PARAMETER_NAME, exception.getMessage());
+        LOG.log(SERVICE_TAG_NAME, parameters);
+
         DataObject result = Data.object();
         result.set(SUCCESS_PARAMETER_NAME, false);
         result.set(MESSAGE_PARAMETER_NAME, exception.getMessage());
@@ -91,13 +95,38 @@ public class MainController {
     }
 
     @After("*")
-    public DataObject handleResponse (Response response) {
+    public DataObject handleResponse (Request request, Response response) {
+        Object responseObject = response.getResponseObject();
+
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put(REQUEST_URI_PARAMETER_NAME, request.getRequestURI());
+        parameters.put(API_KEY_PARAMETER_NAME, request.get(API_KEY_PARAMETER_NAME));
+        parameters.put(SUCCESS_PARAMETER_NAME, true);
+        if (responseObject != null) {
+            parameters.put(DATA_PARAMETER_NAME, getLogData(responseObject));
+        }
+        LOG.log(SERVICE_TAG_NAME, parameters);
+
         DataObject result = Data.object();
         result.set(SUCCESS_PARAMETER_NAME, true);
-        Object responseObject = response.getResponseObject();
         if (responseObject != null) {
             result.set(DATA_PARAMETER_NAME, responseObject);
         }
         return result;
+    }
+
+    private Object getLogData(Object object) {
+        Object logData = null;
+        if (object instanceof DataObject) {
+            Map<String, Object> properties = new HashMap<>();
+            DataObject dataObject = (DataObject)object;
+            for (String property : dataObject.properties()) {
+                properties.put(property, getLogData(dataObject.get(property)));
+            }
+            logData = properties;
+        } else {
+            logData = object;
+        }
+        return logData;
     }
 }
