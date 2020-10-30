@@ -4,6 +4,7 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
+import org.fluentd.logger.FluentLogger;
 import org.neogroup.warp.Request;
 import org.neogroup.warp.Response;
 import org.neogroup.warp.controllers.ControllerComponent;
@@ -12,14 +13,26 @@ import org.neogroup.warp.controllers.routing.*;
 import org.neogroup.warp.data.Data;
 import org.neogroup.warp.data.DataObject;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import static org.neogroup.warp.Warp.getProperty;
 
 @ControllerComponent
 public class MainController {
 
     private static final String BIOMETRICS_JWT_SECRET_KEY_PROPERTY_NAME = "api_key_secret_key";
+    private static final String AUTHORIZATION_HEADER_NAME = "Authorization";
+    private static final String AUTHORIZATION_BEARER = "Bearer";
+    private static final String API_KEY_PARAMETER_NAME = "apiKey";
+    private static final String REQUEST_URI_PARAMETER_NAME = "requestUri";
+    private static final String SUCCESS_PARAMETER_NAME = "success";
+    private static final String DATA_PARAMETER_NAME = "data";
+    private static final String MESSAGE_PARAMETER_NAME = "message";
+    private static final String BIOMETRICS_ACCESS_TAG_NAME = "biometrics.access";
 
     private JWTVerifier jwtVerifier;
+    private static FluentLogger LOG = FluentLogger.getLogger("biometrics");
 
     public MainController() {
         String secretKey = getProperty(BIOMETRICS_JWT_SECRET_KEY_PROPERTY_NAME);
@@ -36,13 +49,13 @@ public class MainController {
 
     @Before("*")
     public void checkSession(Request request, Response response) {
-        String authorizationHeader = request.getHeader("Authorization");
+        String authorizationHeader = request.getHeader(AUTHORIZATION_HEADER_NAME);
         if (authorizationHeader == null) {
             response.setStatus(401);
             throw new ResponseException("Missing authorization header");
         }
         String[] authorizationTokens = authorizationHeader.split(" ");
-        if (!authorizationTokens[0].equals("Bearer")) {
+        if (!authorizationTokens[0].equals(AUTHORIZATION_BEARER)) {
             response.setStatus(401);
             throw new ResponseException("Authorization header is expecting a JWT token");
         }
@@ -53,6 +66,10 @@ public class MainController {
         String token = authorizationTokens[1];
         try {
             jwtVerifier.verify(token);
+            Map<String, Object> parameters = new HashMap<>();
+            parameters.put(REQUEST_URI_PARAMETER_NAME, request.getRequestURI());
+            parameters.put(API_KEY_PARAMETER_NAME, token);
+            LOG.log(BIOMETRICS_ACCESS_TAG_NAME, parameters, System.currentTimeMillis());
         } catch (JWTVerificationException verificationException) {
             response.setStatus(401);
             throw new ResponseException("Invalid authentication token");
@@ -68,18 +85,18 @@ public class MainController {
             exception.printStackTrace();
         }
         DataObject result = Data.object();
-        result.set("success", false);
-        result.set("message", exception.getMessage());
+        result.set(SUCCESS_PARAMETER_NAME, false);
+        result.set(MESSAGE_PARAMETER_NAME, exception.getMessage());
         return result;
     }
 
     @After("*")
     public DataObject handleResponse (Response response) {
         DataObject result = Data.object();
-        result.set("success", true);
+        result.set(SUCCESS_PARAMETER_NAME, true);
         Object responseObject = response.getResponseObject();
         if (responseObject != null) {
-            result.set("data", response.getResponseObject());
+            result.set(DATA_PARAMETER_NAME, responseObject);
         }
         return result;
     }
