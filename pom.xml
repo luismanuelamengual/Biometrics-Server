@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.biometrics</groupId>
     <artifactId>Biometrics</artifactId>
-    <version>1.0.16</version>
+    <version>1.1.0-RC1</version>
     <build>
         <plugins>
             <plugin>
@@ -118,13 +118,6 @@
             <groupId>net.sourceforge.tess4j</groupId>
             <artifactId>tess4j</artifactId>
             <version>4.5.3</version>
-        </dependency>
-
-        <!-- FluentD -->
-        <dependency>
-            <groupId>org.fluentd</groupId>
-            <artifactId>fluent-logger</artifactId>
-            <version>0.3.4</version>
         </dependency>
 
         <!-- JACKSON -->

@@ -10,7 +10,7 @@ mvn dockerfile:push
 
 ## Running image
 
-sudo docker run -it -d -p 8080:8080 --rm luismanuelamengual/biometrics-server:1.0.14
+sudo docker run -it -d -p 8080:8080 --rm luismanuelamengual/biometrics-server:1.1.0-RC1
 
 ## Configuring Amazon
 
