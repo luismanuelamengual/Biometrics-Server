@@ -1,26 +1,22 @@
 package com.biometrics;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.JWTVerifier;
-import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import org.neogroup.warp.Request;
 import org.neogroup.warp.Response;
 import org.neogroup.warp.controllers.ControllerComponent;
 import org.neogroup.warp.controllers.formatters.JsonFormatter;
+import org.neogroup.warp.controllers.routing.After;
+import org.neogroup.warp.controllers.routing.Before;
 import org.neogroup.warp.controllers.routing.Error;
-import org.neogroup.warp.controllers.routing.*;
 import org.neogroup.warp.data.Data;
 import org.neogroup.warp.data.DataObject;
 
 import static org.neogroup.warp.Warp.getLogger;
-import static org.neogroup.warp.Warp.getProperty;
 
 @ControllerComponent
 public class MainController {
 
-    private static final String BIOMETRICS_JWT_SECRET_KEY_PROPERTY_NAME = "api_key_secret_key";
     private static final String AUTHORIZATION_HEADER_NAME = "Authorization";
     private static final String AUTHORIZATION_BEARER = "Bearer";
     private static final String CLIENT_PARAMETER_NAME = "client";
@@ -31,19 +27,7 @@ public class MainController {
     private static final String METHOD_PARAMETER_NAME = "method";
     private static final String PATH_PARAMETER_NAME = "path";
 
-    private JWTVerifier jwtVerifier;
-    private Algorithm jwtSigningAlgorithm;
-    private JsonFormatter jsonFormatter;
-
-    public MainController() {
-        jwtSigningAlgorithm = Algorithm.HMAC256(getProperty(BIOMETRICS_JWT_SECRET_KEY_PROPERTY_NAME));
-        jwtVerifier = JWT.require(jwtSigningAlgorithm).withIssuer("auth0").build();
-        jsonFormatter = new JsonFormatter();
-    }
-
-    public String createSession(String clientName) throws Exception {
-        return JWT.create().withIssuer("auth0").withClaim(CLIENT_PARAMETER_NAME, clientName).sign(jwtSigningAlgorithm);
-    }
+    private JsonFormatter jsonFormatter = new JsonFormatter();
 
     @Before("*")
     public void checkSession(Request request, Response response) {
@@ -63,11 +47,11 @@ public class MainController {
         }
         String token = authorizationTokens[1];
         try {
-            DecodedJWT verifiedToken = jwtVerifier.verify(token);
-            request.set(CLIENT_PARAMETER_NAME, verifiedToken.getClaim(CLIENT_PARAMETER_NAME).asString());
+            DecodedJWT verifiedToken = Authentication.decodeToken(token);
+            request.set(CLIENT_PARAMETER_NAME, verifiedToken.getClaim(Authentication.CLIENT_CLAIM_NAME).asString());
         } catch (JWTVerificationException verificationException) {
             response.setStatus(401);
-            throw new ResponseException("Invalid authentication token");
+            throw new ResponseException(verificationException.getMessage());
         }
     }
 
