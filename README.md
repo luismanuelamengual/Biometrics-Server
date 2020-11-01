@@ -2,15 +2,52 @@
 
 ## Building image
 
+<pre>
 mvn package
+</pre>
 
 ## Pushing image to docker hub
 
+<pre>
 mvn dockerfile:push
+</pre>
 
 ## Running image
 
+Running the image standalone
+
+<pre>
+sudo docker run -it -p 8080:8080 --rm luismanuelamengual/biometrics-server::{TAG}
+</pre>
+
+Running the image with Fluent support
+
+<pre>
 sudo docker run -it -p 8080:8080 --log-driver fluentd --log-opt tag="biometrics" --rm luismanuelamengual/biometrics-server::{TAG}
+</pre>
+
+## Running FluentD image
+
+Create a Dockerfile with the following content
+
+<pre>
+FROM fluent/fluentd
+RUN ["gem", "install", "fluent-plugin-logzio", "--no-rdoc", "--no-ri"]
+COPY td-agent.conf /fluentd/etc/fluent.conf
+ENTRYPOINT ["fluentd", "-c", "/fluentd/etc/fluent.conf"]
+</pre>
+
+Build the image with the following content
+
+<pre>
+sudo docker build -t fluentd .
+</pre>
+
+Run the image with the following command
+
+<pre>
+sudo docker run -it -d -p 24224:24224 fluentd:latest
+</pre>
 
 ## Configuring Amazon
 
