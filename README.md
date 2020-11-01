@@ -10,7 +10,7 @@ mvn dockerfile:push
 
 ## Running image
 
-sudo docker run -it -d -p 8080:8080 --rm luismanuelamengual/biometrics-server:1.1.0-RC1
+sudo docker run -it -p 8080:8080 --log-driver fluentd --log-opt tag="biometrics" --rm luismanuelamengual/biometrics-server::{TAG}
 
 ## Configuring Amazon
 
