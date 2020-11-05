@@ -17,6 +17,7 @@ import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.pdf417.PDF417Reader;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.util.LoadLibs;
+import org.neogroup.warp.Request;
 import org.neogroup.warp.controllers.ControllerComponent;
 import org.neogroup.warp.controllers.routing.Body;
 import org.neogroup.warp.controllers.routing.Parameter;
@@ -110,85 +111,6 @@ public class ApiController {
         tesseract.setDatapath(LoadLibs.extractTessResources("tessdata").getAbsolutePath());
         tesseract.setLanguage("spa");
         pdf417Reader = new PDF417Reader();
-    }
-
-    @Post("check_liveness_image")
-    public DataObject checkLivenesssImage (@Body byte[] imageBytes) throws Exception {
-        Mat image = OpenCVUtils.getImage(imageBytes);
-        Rect frontalFaceRect = OpenCVUtils.detectBiggestFeatureRect(image, faceClassfier);
-        Rect eyePairRect = OpenCVUtils.detectBiggestFeatureRect(image, eyePairClassifier);
-
-        int status = LIVENESS_FACE_NOT_FOUND_STATUS;
-        if (frontalFaceRect != null && eyePairRect != null && OpenCVUtils.containsRect(frontalFaceRect, eyePairRect)) {
-            int imageWidth = image.width();
-            int imageHeight = image.height();
-            int imageMiddleX = imageWidth / 2;
-            int imageMiddleY = imageHeight / 2;
-            int faceMiddleX = frontalFaceRect.x + (frontalFaceRect.width / 2);
-            int faceMiddleY = frontalFaceRect.y + (frontalFaceRect.height / 2);
-            int xDifferential = Math.abs(imageMiddleX - faceMiddleX);
-            int yDifferential = Math.abs(imageMiddleY - faceMiddleY);
-            double faceAspectRatio = 0.5;
-            double imageAspectRatio = (double)imageWidth / (double)imageHeight;
-            double xDifferentialLimit = 0.0;
-            double yDifferentialLimit = 0.0;
-            if (imageAspectRatio > faceAspectRatio) {
-                xDifferentialLimit = imageHeight / 4.0;
-                yDifferentialLimit = imageHeight / 4.0;
-            } else {
-                xDifferentialLimit = imageWidth / 4.0;
-                yDifferentialLimit = imageWidth / 4.0;
-            }
-
-            if (xDifferential > xDifferentialLimit || yDifferential > yDifferentialLimit) {
-                status = LIVENESS_FACE_NOT_CENTERED_STATUS;
-            } else {
-                double xRatio = frontalFaceRect.width / (double) imageWidth;
-                double yRatio = frontalFaceRect.height / (double) imageHeight;
-                double ratio = Math.max(xRatio, yRatio);
-                if (ratio < 0.4) {
-                    status = LIVENESS_FACE_TOO_FAR_AWAY_STATUS;
-                } else if (ratio > 0.8) {
-                    status = LIVENESS_FACE_TOO_CLOSE_STATUS;
-                } else {
-                    status = LIVENESS_OK_STATUS;
-                }
-            }
-        }
-
-        if (status == LIVENESS_OK_STATUS) {
-            Mat grayScaleimage = OpenCVUtils.grayScale(image);
-            Mat imageThreshold = new Mat();
-            Imgproc.threshold(grayScaleimage, imageThreshold, 200, 255, Imgproc.THRESH_BINARY);
-            MatOfDouble mean = new MatOfDouble();
-            MatOfDouble standardDeviation = new MatOfDouble();
-            Core.meanStdDev(imageThreshold, mean, standardDeviation);
-            double[] standardDeviationValues = standardDeviation.toArray();
-            double variance = standardDeviationValues.length > 0 ? Math.pow(standardDeviationValues[0], 2) : 0.0;
-            if (variance >= 5000 && variance <= 9000) {
-                status = LIVENESS_BRIGHT_TEST_FAIL_STATUS;
-            }
-        }
-
-        if (status == LIVENESS_OK_STATUS) {
-            com.amazonaws.services.rekognition.model.Image amazonImage = new com.amazonaws.services.rekognition.model.Image().withBytes(ByteBuffer.wrap(imageBytes));;
-            DetectLabelsRequest request = new DetectLabelsRequest().withImage(amazonImage).withMaxLabels(20).withMinConfidence(75F);
-            DetectLabelsResult result = rekognitionClient.detectLabels(request);
-            for(Label label : result.getLabels()) {
-                String labelName = label.getName();
-                for (String spoofingLabel : SPOOFING_LABELS) {
-                    if (labelName.equals(spoofingLabel)) {
-                        status = LIVENESS_SPOOFING_LABELS_DETECTED_STATUS;
-                        break;
-                    }
-                }
-                if (status != LIVENESS_OK_STATUS) {
-                    break;
-                }
-            }
-        }
-
-        return Data.object().set(STATUS_PROPERTY_NAME, status);
     }
 
     @Post("check_liveness_instruction")
@@ -294,6 +216,103 @@ public class ApiController {
         return Data.object()
                 .set(MATCH_PROPERTY_NAME, status == FACE_MATCH_SUCCESS_STATUS_CODE)
                 .set(STATUS_PROPERTY_NAME, status);
+    }
+
+    @Post("check_liveness_images")
+    public DataObject checkLivenessImages(Request request) throws Exception {
+        boolean livenessStatusOk = true;
+        int imagesCount = request.getInt("imagesCount");
+        byte[][] imageBytes = new byte[imagesCount][];
+        for (int i = 0; i < imagesCount; i++) {
+            imageBytes[i] = request.get("image" + (i + 1), byte[].class);
+        }
+        for (int i = 1; i < imagesCount; i++) {
+            float similarity = compareFacesInImages (imageBytes[0], imageBytes[i]);
+            if (similarity <= 0) {
+                livenessStatusOk = false;
+                break;
+            }
+        }
+        return Data.object().set(STATUS_PROPERTY_NAME, livenessStatusOk);
+    }
+
+    @Post("check_liveness_image")
+    public DataObject checkLivenesssImage (@Body byte[] imageBytes) throws Exception {
+        Mat image = OpenCVUtils.getImage(imageBytes);
+        Rect frontalFaceRect = OpenCVUtils.detectBiggestFeatureRect(image, faceClassfier);
+        Rect eyePairRect = OpenCVUtils.detectBiggestFeatureRect(image, eyePairClassifier);
+
+        int status = LIVENESS_FACE_NOT_FOUND_STATUS;
+        if (frontalFaceRect != null && eyePairRect != null && OpenCVUtils.containsRect(frontalFaceRect, eyePairRect)) {
+            int imageWidth = image.width();
+            int imageHeight = image.height();
+            int imageMiddleX = imageWidth / 2;
+            int imageMiddleY = imageHeight / 2;
+            int faceMiddleX = frontalFaceRect.x + (frontalFaceRect.width / 2);
+            int faceMiddleY = frontalFaceRect.y + (frontalFaceRect.height / 2);
+            int xDifferential = Math.abs(imageMiddleX - faceMiddleX);
+            int yDifferential = Math.abs(imageMiddleY - faceMiddleY);
+            double faceAspectRatio = 0.5;
+            double imageAspectRatio = (double)imageWidth / (double)imageHeight;
+            double xDifferentialLimit = 0.0;
+            double yDifferentialLimit = 0.0;
+            if (imageAspectRatio > faceAspectRatio) {
+                xDifferentialLimit = imageHeight / 4.0;
+                yDifferentialLimit = imageHeight / 4.0;
+            } else {
+                xDifferentialLimit = imageWidth / 4.0;
+                yDifferentialLimit = imageWidth / 4.0;
+            }
+
+            if (xDifferential > xDifferentialLimit || yDifferential > yDifferentialLimit) {
+                status = LIVENESS_FACE_NOT_CENTERED_STATUS;
+            } else {
+                double xRatio = frontalFaceRect.width / (double) imageWidth;
+                double yRatio = frontalFaceRect.height / (double) imageHeight;
+                double ratio = Math.max(xRatio, yRatio);
+                if (ratio < 0.4) {
+                    status = LIVENESS_FACE_TOO_FAR_AWAY_STATUS;
+                } else if (ratio > 0.8) {
+                    status = LIVENESS_FACE_TOO_CLOSE_STATUS;
+                } else {
+                    status = LIVENESS_OK_STATUS;
+                }
+            }
+        }
+
+        if (status == LIVENESS_OK_STATUS) {
+            Mat grayScaleimage = OpenCVUtils.grayScale(image);
+            Mat imageThreshold = new Mat();
+            Imgproc.threshold(grayScaleimage, imageThreshold, 200, 255, Imgproc.THRESH_BINARY);
+            MatOfDouble mean = new MatOfDouble();
+            MatOfDouble standardDeviation = new MatOfDouble();
+            Core.meanStdDev(imageThreshold, mean, standardDeviation);
+            double[] standardDeviationValues = standardDeviation.toArray();
+            double variance = standardDeviationValues.length > 0 ? Math.pow(standardDeviationValues[0], 2) : 0.0;
+            if (variance >= 5000 && variance <= 9000) {
+                status = LIVENESS_BRIGHT_TEST_FAIL_STATUS;
+            }
+        }
+
+        if (status == LIVENESS_OK_STATUS) {
+            com.amazonaws.services.rekognition.model.Image amazonImage = new com.amazonaws.services.rekognition.model.Image().withBytes(ByteBuffer.wrap(imageBytes));;
+            DetectLabelsRequest request = new DetectLabelsRequest().withImage(amazonImage).withMaxLabels(20).withMinConfidence(75F);
+            DetectLabelsResult result = rekognitionClient.detectLabels(request);
+            for(Label label : result.getLabels()) {
+                String labelName = label.getName();
+                for (String spoofingLabel : SPOOFING_LABELS) {
+                    if (labelName.equals(spoofingLabel)) {
+                        status = LIVENESS_SPOOFING_LABELS_DETECTED_STATUS;
+                        break;
+                    }
+                }
+                if (status != LIVENESS_OK_STATUS) {
+                    break;
+                }
+            }
+        }
+
+        return Data.object().set(STATUS_PROPERTY_NAME, status);
     }
 
     @Post("verify_identity")
