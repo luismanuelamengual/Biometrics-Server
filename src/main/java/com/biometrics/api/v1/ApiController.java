@@ -173,19 +173,7 @@ public class ApiController {
             }
             int xDifferential = Math.abs(imageMiddleX - faceMiddleX);
             int yDifferential = Math.abs(imageMiddleY - faceMiddleY);
-            double faceAspectRatio = 0.5;
-            double imageAspectRatio = (double)imageWidth / (double)imageHeight;
-            double xDifferentialLimit = 0.0;
-            double yDifferentialLimit = 0.0;
-            if (imageAspectRatio > faceAspectRatio) {
-                xDifferentialLimit = imageHeight / 4.0;
-                yDifferentialLimit = imageHeight / 4.0;
-            } else {
-                xDifferentialLimit = imageWidth / 4.0;
-                yDifferentialLimit = imageWidth / 4.0;
-            }
-
-            if (xDifferential > xDifferentialLimit || yDifferential > yDifferentialLimit) {
+            if (xDifferential > 40 || yDifferential > 40) {
                 status = FACE_NOT_CENTERED_STATUS_CODE;
             } else {
                 double xRatio = faceRect.width / (double)imageWidth;
