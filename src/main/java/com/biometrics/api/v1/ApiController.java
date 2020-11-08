@@ -132,7 +132,7 @@ public class ApiController {
         } else {
             Rect[] eyeRects = OpenCVUtils.detectFeatureRects(image, eyeClassifier);
             Rect rightFaceRect = OpenCVUtils.detectBiggestFeatureRect(image, profileFaceClassifier);
-            if (rightFaceRect != null && eyePairRect == null && eyeRects.length == 1 && OpenCVUtils.containerAnyRect(rightFaceRect, eyeRects)) {
+            if (rightFaceRect != null && eyePairRect == null && OpenCVUtils.containerAnyRect(rightFaceRect, eyeRects)) {
                 faceRect = rightFaceRect;
                 faceInstruction = RIGHT_PROFILE_FACE_INSTRUCTION;
             } else {
@@ -141,7 +141,7 @@ public class ApiController {
                 if (leftFaceRect != null) {
                     leftFaceRect.x = image.width() - leftFaceRect.x - leftFaceRect.width;
                 }
-                if (leftFaceRect != null && eyePairRect == null && eyeRects.length == 1 && OpenCVUtils.containerAnyRect(leftFaceRect, eyeRects)) {
+                if (leftFaceRect != null && eyePairRect == null && OpenCVUtils.containerAnyRect(leftFaceRect, eyeRects)) {
                     faceRect = leftFaceRect;
                     faceInstruction = LEFT_PROFILE_FACE_INSTRUCTION;
                 } else {
