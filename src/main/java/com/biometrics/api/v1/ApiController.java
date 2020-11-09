@@ -181,7 +181,7 @@ public class ApiController {
                 double ratio = Math.max(xRatio, yRatio);
                 double minFaceZoomRatio = 0.4;
                 double maxFaceZoomRatio = 0.7;
-                if (faceInstruction.equals(LEFT_PROFILE_FACE_INSTRUCTION) || faceInstruction.equals(RIGHT_PROFILE_FACE_INSTRUCTION)) {
+                if (instruction == LEFT_PROFILE_FACE_INSTRUCTION || instruction == RIGHT_PROFILE_FACE_INSTRUCTION) {
                     minFaceZoomRatio = 0.3;
                     maxFaceZoomRatio = 0.8;
                 }
