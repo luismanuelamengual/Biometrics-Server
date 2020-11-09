@@ -179,11 +179,11 @@ public class ApiController {
                 double xRatio = faceRect.width / (double)imageWidth;
                 double yRatio = faceRect.height / (double)imageHeight;
                 double ratio = Math.max(xRatio, yRatio);
-                double minFaceZoomRatio = 0.4;
-                double maxFaceZoomRatio = 0.7;
+                double minFaceZoomRatio = 0.5;
+                double maxFaceZoomRatio = 0.8;
                 if (instruction == LEFT_PROFILE_FACE_INSTRUCTION || instruction == RIGHT_PROFILE_FACE_INSTRUCTION) {
-                    minFaceZoomRatio = 0.3;
-                    maxFaceZoomRatio = 0.8;
+                    minFaceZoomRatio = 0.4;
+                    maxFaceZoomRatio = 0.9;
                 }
                 if (ratio < minFaceZoomRatio) {
                     status = FACE_TOO_FAR_AWAY_STATUS_CODE;
