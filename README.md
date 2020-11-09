@@ -17,13 +17,13 @@ mvn dockerfile:push
 Running the image standalone
 
 <pre>
-sudo docker run -it -p 8080:8080 --rm luismanuelamengual/biometrics-server::{TAG}
+sudo docker run -it -p 8080:8080 --rm luismanuelamengual/biometrics-server:{TAG}
 </pre>
 
 Running the image with Fluent support
 
 <pre>
-sudo docker run -it -p 8080:8080 --log-driver fluentd --log-opt tag="biometrics" --rm luismanuelamengual/biometrics-server::{TAG}
+sudo docker run -it -p 8080:8080 --log-driver fluentd --log-opt tag="biometrics" --rm luismanuelamengual/biometrics-server:{TAG}
 </pre>
 
 ## Running FluentD image
