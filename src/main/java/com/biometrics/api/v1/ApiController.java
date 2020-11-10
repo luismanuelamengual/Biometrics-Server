@@ -435,6 +435,10 @@ public class ApiController {
                     mrzCodeText = mrzCodeText.replaceFirst("<D<", "<0<");
                     mrzCodeText = mrzCodeText.replaceFirst("<B<", "<8<");
                     mrzCodeText = mrzCodeText.replaceFirst("<A<", "<4<");
+                    mrzCodeText = mrzCodeText.replaceFirst("<0D<", "<0<");
+                    if (mrzCodeText.startsWith("1ID")) {
+                        mrzCodeText = mrzCodeText.replaceFirst("1ID", "ID");
+                    }
                     if (mrzCodeText.startsWith("1D")) {
                         mrzCodeText = mrzCodeText.replaceFirst("1D", "ID");
                     }
@@ -606,7 +610,9 @@ public class ApiController {
         }
 
         if (mrzMat != null && !mrzMat.empty()) {
-            mrzMat = OpenCVUtils.sharpen(mrzMat);
+            Imgproc.adaptiveThreshold(mrzMat, mrzMat, 255, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY, 17, 12);
+            Imgproc.erode(mrzMat, mrzMat, new Mat(), new Point(-1, -1), 1);
+            Imgproc.dilate(mrzMat, mrzMat, new Mat(), new Point(-1, -1), 1);
         }
         return mrzMat;
     }
