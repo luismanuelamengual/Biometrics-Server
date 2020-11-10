@@ -2,8 +2,9 @@ package com.biometrics.api.v1;
 
 import com.amazonaws.services.rekognition.AmazonRekognition;
 import com.amazonaws.services.rekognition.AmazonRekognitionClientBuilder;
-import com.amazonaws.services.rekognition.model.Label;
-import com.amazonaws.services.rekognition.model.*;
+import com.amazonaws.services.rekognition.model.CompareFacesMatch;
+import com.amazonaws.services.rekognition.model.CompareFacesRequest;
+import com.amazonaws.services.rekognition.model.CompareFacesResult;
 import com.biometrics.ResponseException;
 import com.biometrics.utils.MRZParser;
 import com.biometrics.utils.OpenCVUtils;
@@ -30,7 +31,7 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 
 import javax.imageio.ImageIO;
-import java.awt.Image;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.nio.ByteBuffer;
@@ -39,7 +40,8 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.opencv.core.CvType.*;
+import static org.opencv.core.CvType.CV_32F;
+import static org.opencv.core.CvType.CV_64F;
 
 @ControllerComponent("v1")
 public class ApiController {
@@ -50,7 +52,6 @@ public class ApiController {
     private static final int LIVENESS_FACE_TOO_CLOSE_STATUS = 1002;
     private static final int LIVENESS_FACE_TOO_FAR_AWAY_STATUS = 1003;
     private static final int LIVENESS_BRIGHT_TEST_FAIL_STATUS = 2001;
-    private static final int LIVENESS_SPOOFING_LABELS_DETECTED_STATUS = 9001;
 
     private static final int FACE_MATCH_SUCCESS_STATUS_CODE = 0;
     private static final int FACE_WITH_INCORRECT_GESTURE_STATUS_CODE = 1;
