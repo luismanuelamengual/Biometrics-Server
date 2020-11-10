@@ -72,6 +72,7 @@ public class ApiController {
     private static final String TYPE_PROPERTY_NAME = "type";
     private static final String RAW_PROPERTY_NAME = "raw";
     private static final String INFORMATION_PROPERTY_NAME = "information";
+    private static final String LIVENESS_PROPERTY_NAME = "liveness";
 
     private CascadeClassifier faceClassfier;
     private CascadeClassifier profileFaceClassifier;
@@ -80,26 +81,6 @@ public class ApiController {
     private Tesseract tesseract;
     private AmazonRekognition rekognitionClient;
     private PDF417Reader pdf417Reader;
-
-    private static final String[] SPOOFING_LABELS = new String[] {
-        "Phone",
-        "Iphone",
-        "Cell Phone",
-        "Mobile Phone",
-        "Laptop",
-        "TV",
-        "Screen",
-        "Keyboard",
-        "LCD Screen",
-        "Computer Keyboard",
-        "Monitor",
-        "Pc",
-        "Television",
-        "Computer Hardware",
-        "Computer",
-        "Hardware",
-        "Display"
-    };
 
     public ApiController() {
         faceClassfier = OpenCVUtils.getClassfierFromResource("cascades/face.xml");
@@ -227,7 +208,7 @@ public class ApiController {
                 break;
             }
         }
-        return Data.object().set(STATUS_PROPERTY_NAME, livenessStatusOk);
+        return Data.object().set(LIVENESS_PROPERTY_NAME, livenessStatusOk);
     }
 
     @Post("check_liveness_image")
@@ -285,24 +266,6 @@ public class ApiController {
             double variance = standardDeviationValues.length > 0 ? Math.pow(standardDeviationValues[0], 2) : 0.0;
             if (variance >= 5000 && variance <= 9000) {
                 status = LIVENESS_BRIGHT_TEST_FAIL_STATUS;
-            }
-        }
-
-        if (status == LIVENESS_OK_STATUS) {
-            com.amazonaws.services.rekognition.model.Image amazonImage = new com.amazonaws.services.rekognition.model.Image().withBytes(ByteBuffer.wrap(imageBytes));;
-            DetectLabelsRequest request = new DetectLabelsRequest().withImage(amazonImage).withMaxLabels(20).withMinConfidence(75F);
-            DetectLabelsResult result = rekognitionClient.detectLabels(request);
-            for(Label label : result.getLabels()) {
-                String labelName = label.getName();
-                for (String spoofingLabel : SPOOFING_LABELS) {
-                    if (labelName.equals(spoofingLabel)) {
-                        status = LIVENESS_SPOOFING_LABELS_DETECTED_STATUS;
-                        break;
-                    }
-                }
-                if (status != LIVENESS_OK_STATUS) {
-                    break;
-                }
             }
         }
 
