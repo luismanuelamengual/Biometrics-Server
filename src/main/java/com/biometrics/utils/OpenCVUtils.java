@@ -16,12 +16,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.opencv.core.CvType.CV_64F;
 import static org.opencv.core.CvType.CV_8U;
 
 public final class OpenCVUtils {
 
     public static Mat getImage(byte[] imageBytes) {
-        return Imgcodecs.imdecode(new MatOfByte(imageBytes), Imgcodecs.IMREAD_UNCHANGED);
+        return OpenCVUtils.getImage(imageBytes, Imgcodecs.IMREAD_UNCHANGED);
+    }
+
+    public static Mat getImage(byte[] imageBytes, int flags) {
+        return Imgcodecs.imdecode(new MatOfByte(imageBytes), flags);
     }
 
     public static byte[] getImageBytes(Mat image) {
@@ -347,6 +352,15 @@ public final class OpenCVUtils {
         mag.convertTo(mag, CvType.CV_8UC1);
         Core.normalize(mag, mag, 0, 255, Core.NORM_MINMAX, CvType.CV_8UC1);
         return mag;
+    }
+
+    public static double getBlurriness(Mat image) {
+        Mat laplacian = new Mat();
+        Imgproc.Laplacian(image, laplacian, CV_64F);
+        MatOfDouble mu = new MatOfDouble();
+        MatOfDouble sigma = new MatOfDouble();
+        Core.meanStdDev(laplacian, mu, sigma);
+        return Math.pow(sigma.get(0,0)[0], 2);
     }
 
     public static CascadeClassifier getClassfierFromResource(String resourceName) {
