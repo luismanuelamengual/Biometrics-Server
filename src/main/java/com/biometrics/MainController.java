@@ -29,44 +29,37 @@ public class MainController {
     private static final String PATH_PARAMETER_NAME = "path";
     private static final String HEALTH_PROPERTY_NAME = "health";
 
-    private static final String HEALTH_CHECK_PATH = "healthcheck";
-
     private JsonFormatter jsonFormatter = new JsonFormatter();
 
-    @Before("*")
+    @Before("v1/*")
     public void checkSession(Request request, Response response) {
-        if (!request.getRequestURI().contains(HEALTH_CHECK_PATH)) {
-            String authorizationHeader = request.getHeader(AUTHORIZATION_HEADER_NAME);
-            if (authorizationHeader == null) {
-                response.setStatus(401);
-                throw new ResponseException("Missing authorization header");
-            }
-            String[] authorizationTokens = authorizationHeader.split(" ");
-            if (!authorizationTokens[0].equals(AUTHORIZATION_BEARER)) {
-                response.setStatus(401);
-                throw new ResponseException("Authorization header is expecting a JWT token");
-            }
-            if (authorizationTokens.length < 2) {
-                response.setStatus(401);
-                throw new ResponseException("Invalid authorization header");
-            }
-            String token = authorizationTokens[1];
-            try {
-                DecodedJWT verifiedToken = Authentication.decodeToken(token);
-                request.set(CLIENT_PARAMETER_NAME, verifiedToken.getClaim(Authentication.CLIENT_CLAIM_NAME).asString());
-            } catch (JWTVerificationException verificationException) {
-                response.setStatus(401);
-                throw new ResponseException(verificationException.getMessage());
-            }
+        String authorizationHeader = request.getHeader(AUTHORIZATION_HEADER_NAME);
+        if (authorizationHeader == null) {
+            response.setStatus(401);
+            throw new ResponseException("Missing authorization header");
+        }
+        String[] authorizationTokens = authorizationHeader.split(" ");
+        if (!authorizationTokens[0].equals(AUTHORIZATION_BEARER)) {
+            response.setStatus(401);
+            throw new ResponseException("Authorization header is expecting a JWT token");
+        }
+        if (authorizationTokens.length < 2) {
+            response.setStatus(401);
+            throw new ResponseException("Invalid authorization header");
+        }
+        String token = authorizationTokens[1];
+        try {
+            DecodedJWT verifiedToken = Authentication.decodeToken(token);
+            request.set(CLIENT_PARAMETER_NAME, verifiedToken.getClaim(Authentication.CLIENT_CLAIM_NAME).asString());
+        } catch (JWTVerificationException verificationException) {
+            response.setStatus(401);
+            throw new ResponseException(verificationException.getMessage());
         }
     }
 
-    @Get(HEALTH_CHECK_PATH)
+    @Get("health_check")
     public DataObject checkHealth() {
-        DataObject result = Data.object();
-        result.set(SUCCESS_PARAMETER_NAME, false);
-        result.set(HEALTH_PROPERTY_NAME, 100);
-        return result;
+        return Data.object().set(HEALTH_PROPERTY_NAME, 100);
     }
 
     @Error("*")
