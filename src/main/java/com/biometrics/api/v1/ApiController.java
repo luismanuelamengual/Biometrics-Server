@@ -35,23 +35,14 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.EnumMap;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 
 import static org.opencv.core.CvType.CV_32F;
 import static org.opencv.core.CvType.CV_64F;
 
 @ControllerComponent("v1")
 public class ApiController {
-
-    private static final int LIVENESS_OK_STATUS = 0;
-    private static final int LIVENESS_FACE_NOT_FOUND_STATUS = 1000;
-    private static final int LIVENESS_FACE_NOT_CENTERED_STATUS = 1001;
-    private static final int LIVENESS_FACE_TOO_CLOSE_STATUS = 1002;
-    private static final int LIVENESS_FACE_TOO_FAR_AWAY_STATUS = 1003;
-    private static final int LIVENESS_BRIGHT_TEST_FAIL_STATUS = 2001;
 
     private static final int FACE_MATCH_SUCCESS_STATUS_CODE = 0;
     private static final int FACE_WITH_INCORRECT_GESTURE_STATUS_CODE = 1;
@@ -197,80 +188,35 @@ public class ApiController {
     @Post("check_liveness_images")
     public DataObject checkLivenessImages(Request request) throws Exception {
         boolean livenessStatusOk = true;
+        int[] histSize = { 50, 60 };
+        float[] ranges = { 0, 180, 0, 256 };
+        int[] channels = { 0, 1 };
         int imagesCount = request.getInt("imagesCount");
-        byte[][] imageBytes = new byte[imagesCount][];
+        List<byte[]> imageBytesList = new ArrayList<>();
+        List<Mat> imagesHist = new ArrayList<>();
         for (int i = 0; i < imagesCount; i++) {
-            imageBytes[i] = request.get("image" + (i + 1), byte[].class);
+            byte[] imageBytes = request.get("image" + (i + 1), byte[].class);
+            Mat image = OpenCVUtils.getImage(imageBytes);
+            Imgproc.calcHist(Arrays.asList(image), new MatOfInt(channels), new Mat(), image, new MatOfInt(histSize), new MatOfFloat(ranges), false);
+            Core.normalize(image, image, 0, 1, Core.NORM_MINMAX);
+            imagesHist.add(image);
+            imageBytesList.add(imageBytes);
         }
+
         for (int i = 1; i < imagesCount; i++) {
-            float similarity = compareFacesInImages (imageBytes[0], imageBytes[i]);
+            double histSimilarity = Imgproc.compareHist(imagesHist.get(0), imagesHist.get(i), Imgproc.HISTCMP_CORREL);
+            if (histSimilarity < 0.6) {
+                livenessStatusOk = false;
+                break;
+            }
+
+            float similarity = compareFacesInImages (imageBytesList.get(0), imageBytesList.get(i));
             if (similarity <= 0) {
                 livenessStatusOk = false;
                 break;
             }
         }
         return Data.object().set(LIVENESS_PROPERTY_NAME, livenessStatusOk);
-    }
-
-    @Post("check_liveness_image")
-    public DataObject checkLivenesssImage (@Body byte[] imageBytes) throws Exception {
-        Mat image = OpenCVUtils.getImage(imageBytes);
-        Rect frontalFaceRect = OpenCVUtils.detectBiggestFeatureRect(image, faceClassfier);
-        Rect eyePairRect = OpenCVUtils.detectBiggestFeatureRect(image, eyePairClassifier);
-
-        int status = LIVENESS_FACE_NOT_FOUND_STATUS;
-        if (frontalFaceRect != null && eyePairRect != null && OpenCVUtils.containsRect(frontalFaceRect, eyePairRect)) {
-            int imageWidth = image.width();
-            int imageHeight = image.height();
-            int imageMiddleX = imageWidth / 2;
-            int imageMiddleY = imageHeight / 2;
-            int faceMiddleX = frontalFaceRect.x + (frontalFaceRect.width / 2);
-            int faceMiddleY = frontalFaceRect.y + (frontalFaceRect.height / 2);
-            int xDifferential = Math.abs(imageMiddleX - faceMiddleX);
-            int yDifferential = Math.abs(imageMiddleY - faceMiddleY);
-            double faceAspectRatio = 0.5;
-            double imageAspectRatio = (double)imageWidth / (double)imageHeight;
-            double xDifferentialLimit = 0.0;
-            double yDifferentialLimit = 0.0;
-            if (imageAspectRatio > faceAspectRatio) {
-                xDifferentialLimit = imageHeight / 4.0;
-                yDifferentialLimit = imageHeight / 4.0;
-            } else {
-                xDifferentialLimit = imageWidth / 4.0;
-                yDifferentialLimit = imageWidth / 4.0;
-            }
-
-            if (xDifferential > xDifferentialLimit || yDifferential > yDifferentialLimit) {
-                status = LIVENESS_FACE_NOT_CENTERED_STATUS;
-            } else {
-                double xRatio = frontalFaceRect.width / (double) imageWidth;
-                double yRatio = frontalFaceRect.height / (double) imageHeight;
-                double ratio = Math.max(xRatio, yRatio);
-                if (ratio < 0.4) {
-                    status = LIVENESS_FACE_TOO_FAR_AWAY_STATUS;
-                } else if (ratio > 0.8) {
-                    status = LIVENESS_FACE_TOO_CLOSE_STATUS;
-                } else {
-                    status = LIVENESS_OK_STATUS;
-                }
-            }
-        }
-
-        if (status == LIVENESS_OK_STATUS) {
-            Mat grayScaleimage = OpenCVUtils.grayScale(image);
-            Mat imageThreshold = new Mat();
-            Imgproc.threshold(grayScaleimage, imageThreshold, 200, 255, Imgproc.THRESH_BINARY);
-            MatOfDouble mean = new MatOfDouble();
-            MatOfDouble standardDeviation = new MatOfDouble();
-            Core.meanStdDev(imageThreshold, mean, standardDeviation);
-            double[] standardDeviationValues = standardDeviation.toArray();
-            double variance = standardDeviationValues.length > 0 ? Math.pow(standardDeviationValues[0], 2) : 0.0;
-            if (variance >= 5000 && variance <= 9000) {
-                status = LIVENESS_BRIGHT_TEST_FAIL_STATUS;
-            }
-        }
-
-        return Data.object().set(STATUS_PROPERTY_NAME, status);
     }
 
     @Post("verify_identity")
