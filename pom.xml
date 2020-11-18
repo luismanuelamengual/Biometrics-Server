@@ -5,7 +5,8 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.biometrics</groupId>
     <artifactId>Biometrics</artifactId>
-    <version>1.1.6</version>
+    <version>1.1.7</version>
+    <name>Biometrics Server</name>
     <build>
         <plugins>
             <plugin>
@@ -28,6 +29,8 @@
                             <archive>
                                 <manifest>
                                     <mainClass>com.biometrics.Main</mainClass>
+                                    <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                                    <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
                                 </manifest>
                             </archive>
                             <descriptorRefs>

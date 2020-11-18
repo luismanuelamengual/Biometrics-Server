@@ -27,9 +27,19 @@ public class MainController {
     private static final String RESPONSE_PARAMETER_NAME = "response";
     private static final String METHOD_PARAMETER_NAME = "method";
     private static final String PATH_PARAMETER_NAME = "path";
-    private static final String HEALTH_PROPERTY_NAME = "health";
+    private static final String HEALTH_PARAMETER_NAME = "health";
+    private static final String NAME_PARAMETER_NAME = "name";
+    private static final String VERSION_PARAMETER_NAME = "version";
 
     private JsonFormatter jsonFormatter = new JsonFormatter();
+    private String implementationTitle;
+    private String implementationVersion;
+
+    public MainController() {
+        Package biometricsPackage = getClass().getPackage();
+        implementationTitle = biometricsPackage.getImplementationTitle();
+        implementationVersion = biometricsPackage.getSpecificationVersion();
+    }
 
     @Before("v1/*")
     public void checkSession(Request request, Response response) {
@@ -59,7 +69,12 @@ public class MainController {
 
     @Get("health_check")
     public DataObject checkHealth() {
-        return Data.object().set(HEALTH_PROPERTY_NAME, 100);
+        return Data.object().set(HEALTH_PARAMETER_NAME, 100);
+    }
+
+    @Get("about")
+    public DataObject getAboutInformation() {
+        return Data.object().set(NAME_PARAMETER_NAME, implementationTitle).set(VERSION_PARAMETER_NAME, implementationVersion);
     }
 
     @Error("*")
@@ -93,6 +108,7 @@ public class MainController {
         DataObject data = Data.object();
         data.set(METHOD_PARAMETER_NAME, request.getMethod());
         data.set(PATH_PARAMETER_NAME, request.getRequestURI());
+        data.set(VERSION_PARAMETER_NAME, implementationVersion);
         if (request.has(CLIENT_PARAMETER_NAME)) {
             data.set(CLIENT_PARAMETER_NAME, request.get(CLIENT_PARAMETER_NAME));
         }
