@@ -14,7 +14,7 @@ public class Main {
     public static void main(String[] args) {
         initializeLogger();
         initializeOpenCV();
-        WarpApplication application = new WarpApplication(8080, true);
+        WarpApplication application = new WarpApplication(80);
         application.start();
     }
 
