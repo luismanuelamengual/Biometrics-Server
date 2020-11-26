@@ -26,27 +26,18 @@ Running the image with Fluent support
 sudo docker run -it -p 80:80 --name biometrics-server --log-driver fluentd --log-opt tag="biometrics" --rm luismanuelamengual/biometrics-server:{TAG}
 </pre>
 
-## Running FluentD image
+## Creating and running fluentd image
 
-Create a Dockerfile with the following content
-
-<pre>
-FROM fluent/fluentd
-RUN ["gem", "install", "fluent-plugin-logzio", "--no-rdoc", "--no-ri"]
-COPY td-agent.conf /fluentd/etc/fluent.conf
-ENTRYPOINT ["fluentd", "-c", "/fluentd/etc/fluent.conf"]
-</pre>
-
-Build the image with the following content
+Create the image
 
 <pre>
-sudo docker build -t fluentd .
+sudo docker build -t biometrics-logs-router .
 </pre>
 
 Run the image with the following command
 
 <pre>
-sudo docker run -it -d -p 24224:24224 fluentd:latest
+sudo docker run -it -d -p 24224:24224 biometrics-logs-router:latest
 </pre>
 
 ## Configuring Amazon
