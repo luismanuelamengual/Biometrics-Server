@@ -18,9 +18,11 @@ import static org.neogroup.warp.Warp.getLogger;
 @ControllerComponent
 public class MainController {
 
+    private static final String X_FORWARDED_FOR_HEADER_NAME = "X-Forwarded-For";
     private static final String AUTHORIZATION_HEADER_NAME = "Authorization";
     private static final String AUTHORIZATION_BEARER = "Bearer";
     private static final String CLIENT_PARAMETER_NAME = "client";
+    private static final String CLIENT_IP_PARAMETER_NAME = "clientIp";
     private static final String SUCCESS_PARAMETER_NAME = "success";
     private static final String DATA_PARAMETER_NAME = "data";
     private static final String MESSAGE_PARAMETER_NAME = "message";
@@ -61,6 +63,7 @@ public class MainController {
         try {
             DecodedJWT verifiedToken = Authentication.decodeToken(token);
             request.set(CLIENT_PARAMETER_NAME, verifiedToken.getClaim(Authentication.CLIENT_CLAIM_NAME).asString());
+            request.set(CLIENT_IP_PARAMETER_NAME, getClientIp(request));
         } catch (JWTVerificationException verificationException) {
             response.setStatus(401);
             throw new ResponseException(verificationException.getMessage());
@@ -104,7 +107,7 @@ public class MainController {
         return result;
     }
 
-    public DataObject getLogData(Request request, Object response) {
+    private DataObject getLogData(Request request, Object response) {
         DataObject data = Data.object();
         data.set(METHOD_PARAMETER_NAME, request.getMethod());
         data.set(PATH_PARAMETER_NAME, request.getRequestURI());
@@ -112,7 +115,18 @@ public class MainController {
         if (request.has(CLIENT_PARAMETER_NAME)) {
             data.set(CLIENT_PARAMETER_NAME, request.get(CLIENT_PARAMETER_NAME));
         }
+        if (request.has(CLIENT_IP_PARAMETER_NAME)) {
+            data.set(CLIENT_IP_PARAMETER_NAME, request.get(CLIENT_IP_PARAMETER_NAME));
+        }
         data.set(RESPONSE_PARAMETER_NAME, response);
         return data;
+    }
+
+    private String getClientIp(Request request) {
+        String clientIp = request.getHeader(X_FORWARDED_FOR_HEADER_NAME);
+        if (clientIp == null || clientIp.isEmpty()) {
+            clientIp = request.getRemoteAddress();
+        }
+        return clientIp;
     }
 }
