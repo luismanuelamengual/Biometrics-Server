@@ -22,16 +22,18 @@ public class MainController {
     private static final String AUTHORIZATION_HEADER_NAME = "Authorization";
     private static final String AUTHORIZATION_BEARER = "Bearer";
     private static final String CLIENT_PARAMETER_NAME = "client";
-    private static final String CLIENT_IP_PARAMETER_NAME = "clientIp";
+    private static final String CLIENT_ADDRESS_PARAMETER_NAME = "clientAddress";
     private static final String SUCCESS_PARAMETER_NAME = "success";
     private static final String DATA_PARAMETER_NAME = "data";
     private static final String MESSAGE_PARAMETER_NAME = "message";
     private static final String RESPONSE_PARAMETER_NAME = "response";
+    private static final String RESPONSE_TIME_PARAMETER_NAME = "responseTime";
     private static final String METHOD_PARAMETER_NAME = "method";
     private static final String PATH_PARAMETER_NAME = "path";
     private static final String HEALTH_PARAMETER_NAME = "health";
     private static final String NAME_PARAMETER_NAME = "name";
     private static final String VERSION_PARAMETER_NAME = "version";
+    private static final String TIMESTAMP_PARAMETER_NAME = "timestamp";
 
     private JsonFormatter jsonFormatter = new JsonFormatter();
     private String implementationTitle;
@@ -63,7 +65,8 @@ public class MainController {
         try {
             DecodedJWT verifiedToken = Authentication.decodeToken(token);
             request.set(CLIENT_PARAMETER_NAME, verifiedToken.getClaim(Authentication.CLIENT_CLAIM_NAME).asString());
-            request.set(CLIENT_IP_PARAMETER_NAME, getClientIp(request));
+            request.set(CLIENT_ADDRESS_PARAMETER_NAME, getClientIp(request));
+            request.set(TIMESTAMP_PARAMETER_NAME, System.currentTimeMillis());
         } catch (JWTVerificationException verificationException) {
             response.setStatus(401);
             throw new ResponseException(verificationException.getMessage());
@@ -115,8 +118,13 @@ public class MainController {
         if (request.has(CLIENT_PARAMETER_NAME)) {
             data.set(CLIENT_PARAMETER_NAME, request.get(CLIENT_PARAMETER_NAME));
         }
-        if (request.has(CLIENT_IP_PARAMETER_NAME)) {
-            data.set(CLIENT_IP_PARAMETER_NAME, request.get(CLIENT_IP_PARAMETER_NAME));
+        if (request.has(CLIENT_ADDRESS_PARAMETER_NAME)) {
+            data.set(CLIENT_ADDRESS_PARAMETER_NAME, request.get(CLIENT_ADDRESS_PARAMETER_NAME));
+        }
+        if (request.has(TIMESTAMP_PARAMETER_NAME)) {
+            long requestTimestamp = request.get(TIMESTAMP_PARAMETER_NAME);
+            long elapsedTime = System.currentTimeMillis() - requestTimestamp;
+            data.set(RESPONSE_TIME_PARAMETER_NAME, elapsedTime / 1000.0);
         }
         data.set(RESPONSE_PARAMETER_NAME, response);
         return data;

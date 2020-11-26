@@ -133,31 +133,31 @@ public class ApiController {
         if (faceRect == null) {
             status = FACE_NOT_FOUND_STATUS_CODE;
         } else {
+            int maxXDifferential = 40;
+            int maxYDifferential = 40;
+            double minFaceZoomRatio = 0.45;
+            double maxFaceZoomRatio = 0.85;
+            if (faceInstruction == LEFT_PROFILE_FACE_INSTRUCTION || faceInstruction == RIGHT_PROFILE_FACE_INSTRUCTION || instruction == LEFT_PROFILE_FACE_INSTRUCTION || instruction == RIGHT_PROFILE_FACE_INSTRUCTION) {
+                minFaceZoomRatio -= 0.15;
+                maxFaceZoomRatio += 0.15;
+                maxXDifferential += 15;
+                maxYDifferential += 15;
+            }
+
             int imageWidth = image.width();
             int imageHeight = image.height();
             int imageMiddleX = imageWidth / 2;
             int imageMiddleY = imageHeight / 2;
             int faceMiddleX = faceRect.x + (faceRect.width / 2);
             int faceMiddleY = faceRect.y + (faceRect.height / 2);
-            if (faceInstruction == LEFT_PROFILE_FACE_INSTRUCTION) {
-                faceMiddleX -= (faceRect.width * 10.0) / 100.0;
-            } else if (faceInstruction == RIGHT_PROFILE_FACE_INSTRUCTION) {
-                faceMiddleX += (faceRect.width * 10.0) / 100.0;
-            }
             int xDifferential = Math.abs(imageMiddleX - faceMiddleX);
             int yDifferential = Math.abs(imageMiddleY - faceMiddleY);
-            if (xDifferential > 40 || yDifferential > 40) {
+            if (xDifferential > maxXDifferential || yDifferential > maxYDifferential) {
                 status = FACE_NOT_CENTERED_STATUS_CODE;
             } else {
                 double xRatio = faceRect.width / (double)imageWidth;
                 double yRatio = faceRect.height / (double)imageHeight;
                 double ratio = Math.max(xRatio, yRatio);
-                double minFaceZoomRatio = 0.45;
-                double maxFaceZoomRatio = 0.85;
-                if (instruction == LEFT_PROFILE_FACE_INSTRUCTION || instruction == RIGHT_PROFILE_FACE_INSTRUCTION) {
-                    minFaceZoomRatio = 0.35;
-                    maxFaceZoomRatio = 0.95;
-                }
                 if (ratio < minFaceZoomRatio) {
                     status = FACE_TOO_FAR_AWAY_STATUS_CODE;
                 } else if (ratio > maxFaceZoomRatio) {
