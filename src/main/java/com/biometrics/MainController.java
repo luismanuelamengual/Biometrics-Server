@@ -18,6 +18,7 @@ import static org.neogroup.warp.Warp.getLogger;
 @ControllerComponent
 public class MainController {
 
+    private static final char IP_SEPARATOR = ',';
     private static final String X_FORWARDED_FOR_HEADER_NAME = "X-Forwarded-For";
     private static final String AUTHORIZATION_HEADER_NAME = "Authorization";
     private static final String AUTHORIZATION_BEARER = "Bearer";
@@ -83,22 +84,23 @@ public class MainController {
         return Data.object().set(NAME_PARAMETER_NAME, implementationTitle).set(VERSION_PARAMETER_NAME, implementationVersion);
     }
 
-    @Error("*")
+    @Error
     public DataObject errorHandler(Request request, Throwable exception) {
         if (exception.getCause() != null) {
             exception = exception.getCause();
         }
-        if (!(exception instanceof ResponseException)) {
-            exception.printStackTrace();
-        }
         DataObject result = Data.object();
         result.set(SUCCESS_PARAMETER_NAME, false);
         result.set(MESSAGE_PARAMETER_NAME, exception.getMessage());
-        getLogger().info(jsonFormatter.format(getLogData(request, result)));
+        if (exception instanceof ResponseException) {
+            getLogger().info(jsonFormatter.format(getLogData(request, result)));
+        } else {
+            getLogger().warning(jsonFormatter.format(getLogData(request, result)));
+        }
         return result;
     }
 
-    @After("*")
+    @After
     public DataObject handleResponse (Request request, Response response) {
         Object responseObject = response.getResponseObject();
         DataObject result = Data.object();
@@ -134,6 +136,10 @@ public class MainController {
         String clientIp = request.getHeader(X_FORWARDED_FOR_HEADER_NAME);
         if (clientIp == null || clientIp.isEmpty()) {
             clientIp = request.getRemoteAddress();
+        }
+        int index = clientIp.indexOf(IP_SEPARATOR);
+        if (index >= 0) {
+            clientIp = clientIp.substring(0, index);
         }
         return clientIp;
     }
