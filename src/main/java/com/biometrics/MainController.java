@@ -1,6 +1,8 @@
 package com.biometrics;
 
 import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.auth0.jwt.impl.NullClaim;
+import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import org.neogroup.warp.Request;
 import org.neogroup.warp.Response;
@@ -18,12 +20,13 @@ import static org.neogroup.warp.Warp.getLogger;
 @ControllerComponent
 public class MainController {
 
+    private static final String BASE_PATH = "/";
     private static final char IP_SEPARATOR = ',';
     private static final String X_FORWARDED_FOR_HEADER_NAME = "X-Forwarded-For";
     private static final String AUTHORIZATION_HEADER_NAME = "Authorization";
     private static final String AUTHORIZATION_BEARER = "Bearer";
     private static final String CLIENT_PARAMETER_NAME = "client";
-    private static final String CLIENT_ADDRESS_PARAMETER_NAME = "clientAddress";
+    private static final String IP_PARAMETER_NAME = "ip";
     private static final String SUCCESS_PARAMETER_NAME = "success";
     private static final String DATA_PARAMETER_NAME = "data";
     private static final String MESSAGE_PARAMETER_NAME = "message";
@@ -31,7 +34,6 @@ public class MainController {
     private static final String RESPONSE_TIME_PARAMETER_NAME = "responseTime";
     private static final String METHOD_PARAMETER_NAME = "method";
     private static final String PATH_PARAMETER_NAME = "path";
-    private static final String HEALTH_PARAMETER_NAME = "health";
     private static final String NAME_PARAMETER_NAME = "name";
     private static final String VERSION_PARAMETER_NAME = "version";
     private static final String TIMESTAMP_PARAMETER_NAME = "timestamp";
@@ -65,8 +67,23 @@ public class MainController {
         String token = authorizationTokens[1];
         try {
             DecodedJWT verifiedToken = Authentication.decodeToken(token);
+            String ip = getClientIp(request);
             request.set(CLIENT_PARAMETER_NAME, verifiedToken.getClaim(Authentication.CLIENT_CLAIM_NAME).asString());
-            request.set(CLIENT_ADDRESS_PARAMETER_NAME, getClientIp(request));
+            request.set(IP_PARAMETER_NAME, ip);
+            Claim allowedIpsClaim = verifiedToken.getClaim(Authentication.ALLOWED_IPS_CLAIM_NAME);
+            if (!(allowedIpsClaim instanceof NullClaim)) {
+                String[] allowedIps = allowedIpsClaim.asArray(String.class);
+                boolean allowed = false;
+                for (String allowedIp : allowedIps) {
+                    if (allowedIp.equals(ip)) {
+                        allowed = true;
+                        break;
+                    }
+                }
+                if (!allowed) {
+                    throw new ResponseException("Ip \"" + ip + "\" is not allowed !!");
+                }
+            }
             request.set(TIMESTAMP_PARAMETER_NAME, System.currentTimeMillis());
         } catch (JWTVerificationException verificationException) {
             response.setStatus(401);
@@ -74,12 +91,7 @@ public class MainController {
         }
     }
 
-    @Get("health_check")
-    public DataObject checkHealth() {
-        return Data.object().set(HEALTH_PARAMETER_NAME, 100);
-    }
-
-    @Get("about")
+    @Get
     public DataObject getAboutInformation() {
         return Data.object().set(NAME_PARAMETER_NAME, implementationTitle).set(VERSION_PARAMETER_NAME, implementationVersion);
     }
@@ -92,10 +104,12 @@ public class MainController {
         DataObject result = Data.object();
         result.set(SUCCESS_PARAMETER_NAME, false);
         result.set(MESSAGE_PARAMETER_NAME, exception.getMessage());
-        if (exception instanceof ResponseException) {
-            getLogger().info(jsonFormatter.format(getLogData(request, result)));
-        } else {
-            getLogger().warning(jsonFormatter.format(getLogData(request, result)));
+        if (!request.getRequestURI().equals(BASE_PATH)) {
+            if (exception instanceof ResponseException) {
+                getLogger().info(jsonFormatter.format(getLogData(request, result)));
+            } else {
+                getLogger().warning(jsonFormatter.format(getLogData(request, result)));
+            }
         }
         return result;
     }
@@ -108,7 +122,9 @@ public class MainController {
         if (responseObject != null) {
             result.set(DATA_PARAMETER_NAME, responseObject);
         }
-        getLogger().info(jsonFormatter.format(getLogData(request, result)));
+        if (!request.getRequestURI().equals(BASE_PATH)) {
+            getLogger().info(jsonFormatter.format(getLogData(request, result)));
+        }
         return result;
     }
 
@@ -120,8 +136,8 @@ public class MainController {
         if (request.has(CLIENT_PARAMETER_NAME)) {
             data.set(CLIENT_PARAMETER_NAME, request.get(CLIENT_PARAMETER_NAME));
         }
-        if (request.has(CLIENT_ADDRESS_PARAMETER_NAME)) {
-            data.set(CLIENT_ADDRESS_PARAMETER_NAME, request.get(CLIENT_ADDRESS_PARAMETER_NAME));
+        if (request.has(IP_PARAMETER_NAME)) {
+            data.set(IP_PARAMETER_NAME, request.get(IP_PARAMETER_NAME));
         }
         if (request.has(TIMESTAMP_PARAMETER_NAME)) {
             long requestTimestamp = request.get(TIMESTAMP_PARAMETER_NAME);
