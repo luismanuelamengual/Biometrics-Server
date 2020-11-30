@@ -91,7 +91,7 @@ public class MainController {
         }
     }
 
-    @Get
+    @Get("/")
     public DataObject getAboutInformation() {
         return Data.object().set(NAME_PARAMETER_NAME, implementationTitle).set(VERSION_PARAMETER_NAME, implementationVersion);
     }
