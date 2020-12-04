@@ -341,11 +341,17 @@ public class ApiController {
                 if (mrzCodeText != null && !mrzCodeText.isEmpty() && mrzCodeText.length() > 40 && mrzCodeText.indexOf("<<") > 0) {
                     mrzCodeText = mrzCodeText.replaceAll("\n", "");
                     mrzCodeText = mrzCodeText.replaceFirst("<0O<", "<0<");
+                    mrzCodeText = mrzCodeText.replaceFirst("<0OD<", "<0<");
                     mrzCodeText = mrzCodeText.replaceFirst("<O<", "<0<");
                     mrzCodeText = mrzCodeText.replaceFirst("<D<", "<0<");
                     mrzCodeText = mrzCodeText.replaceFirst("<B<", "<8<");
                     mrzCodeText = mrzCodeText.replaceFirst("<A<", "<4<");
                     mrzCodeText = mrzCodeText.replaceFirst("<0D<", "<0<");
+                    mrzCodeText = mrzCodeText.replaceFirst("<ó", "<6");
+                    mrzCodeText = mrzCodeText.replaceFirst("<Ó6", "<6");
+                    mrzCodeText = mrzCodeText.replace("<c<", "<<<");
+                    mrzCodeText = mrzCodeText.replace("<cc<", "<<<<");
+                    mrzCodeText = mrzCodeText.replace("<ccc<", "<<<<<");
                     if (mrzCodeText.startsWith("1ID")) {
                         mrzCodeText = mrzCodeText.replaceFirst("1ID", "ID");
                     }
@@ -520,7 +526,7 @@ public class ApiController {
         }
 
         if (mrzMat != null && !mrzMat.empty()) {
-            Imgproc.adaptiveThreshold(mrzMat, mrzMat, 255, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY, 17, 12);
+            Imgproc.adaptiveThreshold(mrzMat, mrzMat, 255, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY, 17, 5);
             Imgproc.erode(mrzMat, mrzMat, new Mat(), new Point(-1, -1), 1);
             Imgproc.dilate(mrzMat, mrzMat, new Mat(), new Point(-1, -1), 1);
         }

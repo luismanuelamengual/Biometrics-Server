@@ -19,9 +19,26 @@ public class MRZParser {
     public static Map<String, Object> parseCode(String mrzCode) {
         Map<String, Object> documentData = null;
         if (mrzCode.startsWith(ID_ARG_PREFIX) && mrzCode.length() > 80) {
-            String section1 = mrzCode.substring(0, 30);
-            String section2 = mrzCode.substring(30, 60);
-            String section3 = mrzCode.substring(60);
+            String section1 = null;
+            int line2StartIndex = 0;
+            for (line2StartIndex = mrzCode.indexOf("<<"); line2StartIndex < mrzCode.length(); line2StartIndex++) {
+                if (mrzCode.charAt(line2StartIndex) != '<') {
+                    section1 = mrzCode.substring(0, line2StartIndex);
+                    break;
+                }
+            }
+            String section2 = null;
+            int line3StartIndex = line2StartIndex;
+            for (line3StartIndex = mrzCode.indexOf("<<", line2StartIndex); line3StartIndex < mrzCode.length(); line3StartIndex++) {
+                if (mrzCode.charAt(line3StartIndex) != '<') {
+                    line3StartIndex++;
+                    section2 = mrzCode.substring(line2StartIndex, line3StartIndex);
+                    break;
+                }
+            }
+            String section3 = mrzCode.substring(line3StartIndex);
+
+
             int documentSeparatorIndex = section1.indexOf("<");
             String documentField = section1.substring(5, documentSeparatorIndex);
             char documentCheckSum = section1.charAt(documentSeparatorIndex+1);
