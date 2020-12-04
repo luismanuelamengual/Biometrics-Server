@@ -38,6 +38,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.List;
 
+import static org.neogroup.warp.Warp.getLogger;
 import static org.opencv.core.CvType.CV_32F;
 import static org.opencv.core.CvType.CV_64F;
 
@@ -263,7 +264,9 @@ public class ApiController {
                             .set(RAW_PROPERTY_NAME, pdf417RawText)
                             .set(INFORMATION_PROPERTY_NAME, documentInformation);
                 }
-            } catch (Exception ex) {}
+            } catch (Exception ex) {
+                getLogger().warning("Unable to read PDF code: \"" + pdf417RawText + "\" !!");
+            }
         }
 
         if (response == null) {
@@ -281,7 +284,9 @@ public class ApiController {
                                 .set(RAW_PROPERTY_NAME, mrzRawText)
                                 .set(INFORMATION_PROPERTY_NAME, documentInformation);
                     }
-                } catch(Exception ex) {}
+                } catch(Exception ex) {
+                    getLogger().warning("Unable to read MRZ code: \"" + mrzRawText + "\" !!");
+                }
             }
         }
 
