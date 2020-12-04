@@ -84,6 +84,7 @@ public class ApiController {
         tesseract = new Tesseract();
         tesseract.setDatapath(LoadLibs.extractTessResources("tessdata").getAbsolutePath());
         tesseract.setLanguage("spa");
+        tesseract.setTessVariable("debug_file", "/dev/null");
         pdf417Reader = new PDF417Reader();
     }
 
