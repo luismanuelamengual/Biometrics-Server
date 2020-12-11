@@ -1,5 +1,6 @@
 package com.biometrics;
 
+import com.biometrics.utils.OpenCVUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.varia.NullAppender;
@@ -41,10 +42,6 @@ public class Main {
 
     private static void initializeOpenCV() {
         getLogger().info("Initializing OpenCV library ...");
-        try {
-            nu.pattern.OpenCV.loadShared();
-        } catch (Throwable ex) {
-            nu.pattern.OpenCV.loadLocally();
-        }
+        OpenCVUtils.initializeLibrary();
     }
 }

@@ -21,6 +21,19 @@ import static org.opencv.core.CvType.CV_8U;
 
 public final class OpenCVUtils {
 
+    private static boolean initialized = false;
+
+    public static void initializeLibrary() {
+        if (!initialized) {
+            try {
+                nu.pattern.OpenCV.loadShared();
+            } catch (Throwable ex) {
+                nu.pattern.OpenCV.loadLocally();
+            }
+            initialized = true;
+        }
+    }
+
     public static Mat getImage(byte[] imageBytes) {
         return OpenCVUtils.getImage(imageBytes, Imgcodecs.IMREAD_UNCHANGED);
     }
@@ -43,7 +56,7 @@ public final class OpenCVUtils {
         return new Scalar(color.getBlue(), color.getGreen(), color.getRed());
     }
 
-    public static Image getBufferedImage(Mat image) {
+    public static BufferedImage getBufferedImage(Mat image) {
         BufferedImage bufferedImage = null;
         try (ByteArrayInputStream bais = new ByteArrayInputStream(getImageBytes(image))) {
             bufferedImage = ImageIO.read(bais);

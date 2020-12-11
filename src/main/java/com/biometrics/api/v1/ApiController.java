@@ -6,18 +6,9 @@ import com.amazonaws.services.rekognition.model.CompareFacesMatch;
 import com.amazonaws.services.rekognition.model.CompareFacesRequest;
 import com.amazonaws.services.rekognition.model.CompareFacesResult;
 import com.biometrics.ResponseException;
-import com.biometrics.utils.MRZParser;
+import com.biometrics.utils.MRZUtils;
 import com.biometrics.utils.OpenCVUtils;
-import com.biometrics.utils.PDF417Parser;
-import com.google.zxing.BinaryBitmap;
-import com.google.zxing.DecodeHintType;
-import com.google.zxing.LuminanceSource;
-import com.google.zxing.Result;
-import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
-import com.google.zxing.common.HybridBinarizer;
-import com.google.zxing.pdf417.PDF417Reader;
-import net.sourceforge.tess4j.Tesseract;
-import net.sourceforge.tess4j.util.LoadLibs;
+import com.biometrics.utils.PDF417Utils;
 import org.neogroup.warp.Request;
 import org.neogroup.warp.controllers.ControllerComponent;
 import org.neogroup.warp.controllers.routing.Body;
@@ -25,18 +16,15 @@ import org.neogroup.warp.controllers.routing.Parameter;
 import org.neogroup.warp.controllers.routing.Post;
 import org.neogroup.warp.data.Data;
 import org.neogroup.warp.data.DataObject;
-import org.opencv.core.Point;
 import org.opencv.core.*;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 
-import javax.imageio.ImageIO;
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import static org.neogroup.warp.Warp.getLogger;
 import static org.opencv.core.CvType.CV_32F;
@@ -71,9 +59,7 @@ public class ApiController {
     private CascadeClassifier profileFaceClassifier;
     private CascadeClassifier eyeClassifier;
     private CascadeClassifier eyePairClassifier;
-    private Tesseract tesseract;
     private AmazonRekognition rekognitionClient;
-    private PDF417Reader pdf417Reader;
 
     public ApiController() {
         faceClassfier = OpenCVUtils.getClassfierFromResource("cascades/face.xml");
@@ -81,11 +67,6 @@ public class ApiController {
         eyeClassifier = OpenCVUtils.getClassfierFromResource("cascades/eye.xml");
         eyePairClassifier = OpenCVUtils.getClassfierFromResource("cascades/eye-pair.xml");
         rekognitionClient = AmazonRekognitionClientBuilder.defaultClient();
-        tesseract = new Tesseract();
-        tesseract.setDatapath(LoadLibs.extractTessResources("tessdata").getAbsolutePath());
-        tesseract.setLanguage("spa");
-        tesseract.setTessVariable("debug_file", "/dev/null");
-        pdf417Reader = new PDF417Reader();
     }
 
     @Post("check_liveness_instruction")
@@ -258,7 +239,7 @@ public class ApiController {
 
         if (pdf417RawText != null) {
             try {
-                Map<String, Object> documentInformation = PDF417Parser.parseCode(pdf417RawText);
+                Map<String, Object> documentInformation = PDF417Utils.parseCode(pdf417RawText);
                 if (documentInformation != null && !documentInformation.isEmpty()){
                     response = Data.object()
                             .set(TYPE_PROPERTY_NAME, PDF417_TYPE)
@@ -278,7 +259,7 @@ public class ApiController {
 
             if (mrzRawText != null) {
                 try {
-                    Map<String, Object> documentInformation = MRZParser.parseCode(mrzRawText);
+                    Map<String, Object> documentInformation = MRZUtils.parseCode(mrzRawText);
                     if (documentInformation != null && !documentInformation.isEmpty()){
                         response = Data.object()
                                 .set(TYPE_PROPERTY_NAME, MRZ_TYPE)
@@ -303,7 +284,7 @@ public class ApiController {
         String pdf417RawText = getPDF417CodeFromImage(imageBytes);
         if (pdf417RawText != null) {
             try {
-                Map<String, Object> documentInformation = PDF417Parser.parseCode(pdf417RawText);
+                Map<String, Object> documentInformation = PDF417Utils.parseCode(pdf417RawText);
                 if (documentInformation != null && !documentInformation.isEmpty()){
                     response = Data.object()
                             .set(RAW_PROPERTY_NAME, pdf417RawText)
@@ -323,7 +304,7 @@ public class ApiController {
         String mrzRawText = getMRZCodeFromImage(imageBytes);
         if (mrzRawText != null) {
             try {
-                Map<String, Object> documentInformation = MRZParser.parseCode(mrzRawText);
+                Map<String, Object> documentInformation = MRZUtils.parseCode(mrzRawText);
                 if (documentInformation != null && !documentInformation.isEmpty()){
                     response = Data.object()
                             .set(RAW_PROPERTY_NAME, mrzRawText)
@@ -337,59 +318,27 @@ public class ApiController {
         return response;
     }
 
-    private String getMRZCodeFromImage (byte[] imageBytes) throws Exception {
+    private String getMRZCodeFromImage (byte[] imageBytes) {
         String mrzCode = null;
         if (imageBytes.length > 0) {
             Mat mrzMat = detectMrz(OpenCVUtils.getImage(imageBytes));
             if (mrzMat != null) {
-                Image mrzImage = OpenCVUtils.getBufferedImage(mrzMat);
-                String mrzCodeText = tesseract.doOCR((BufferedImage)mrzImage);
-                if (mrzCodeText != null && !mrzCodeText.isEmpty() && mrzCodeText.length() > 40 && mrzCodeText.indexOf("<<") > 0) {
-                    mrzCodeText = mrzCodeText.replaceAll("\n", "");
-                    mrzCodeText = mrzCodeText.replaceFirst("<0O<", "<0<");
-                    mrzCodeText = mrzCodeText.replaceFirst("<0OD<", "<0<");
-                    mrzCodeText = mrzCodeText.replaceFirst("<O<", "<0<");
-                    mrzCodeText = mrzCodeText.replaceFirst("<D<", "<0<");
-                    mrzCodeText = mrzCodeText.replaceFirst("<B<", "<8<");
-                    mrzCodeText = mrzCodeText.replaceFirst("<A<", "<4<");
-                    mrzCodeText = mrzCodeText.replaceFirst("<0D<", "<0<");
-                    mrzCodeText = mrzCodeText.replaceFirst("<ó", "<6");
-                    mrzCodeText = mrzCodeText.replaceFirst("<Ó6", "<6");
-                    mrzCodeText = mrzCodeText.replace("<c<", "<<<");
-                    mrzCodeText = mrzCodeText.replace("<cc<", "<<<<");
-                    mrzCodeText = mrzCodeText.replace("<ccc<", "<<<<<");
-                    if (mrzCodeText.startsWith("1ID")) {
-                        mrzCodeText = mrzCodeText.replaceFirst("1ID", "ID");
-                    }
-                    if (mrzCodeText.startsWith("1D")) {
-                        mrzCodeText = mrzCodeText.replaceFirst("1D", "ID");
-                    }
-                    mrzCode = mrzCodeText;
-                }
+                mrzCode = MRZUtils.readCode(OpenCVUtils.getBufferedImage(mrzMat));
             }
         }
         return mrzCode;
     }
 
-    private String getPDF417CodeFromImage(byte[] imageBytes) throws Exception {
+    private String getPDF417CodeFromImage(byte[] imageBytes) {
         String pdf417Code = null;
         if (imageBytes.length > 0) {
             Mat image = OpenCVUtils.getImage(imageBytes);
             List<Mat> barcodeImages = detectPDF417(image);
             for (Mat barcodeImage : barcodeImages) {
-                byte[] barcodeImageBytes = OpenCVUtils.getImageBytes(barcodeImage);
-                try (ByteArrayInputStream bais = new ByteArrayInputStream(barcodeImageBytes)) {
-                    LuminanceSource source = new BufferedImageLuminanceSource(ImageIO.read(bais));
-                    BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
-                    Result result = this.pdf417Reader.decode(bitmap, new EnumMap<>(DecodeHintType.class));
-                    if (result != null) {
-                        String resultText = result.getText();
-                        if (resultText != null && !resultText.isEmpty()) {
-                            pdf417Code = resultText;
-                        }
-                        break;
-                    }
-                } catch (Throwable e) {}
+                pdf417Code = PDF417Utils.readCode(OpenCVUtils.getBufferedImage(barcodeImage));
+                if (pdf417Code != null) {
+                    break;
+                }
             }
         }
         return pdf417Code;
@@ -413,7 +362,7 @@ public class ApiController {
         return similarity;
     }
 
-    public List<Mat> detectPDF417(Mat src){
+    private List<Mat> detectPDF417(Mat src){
         List<Mat> barcodeImageCandidates = new ArrayList<>();
         Mat grayScaleImage = OpenCVUtils.grayScale(src);
         Mat resizedImage = OpenCVUtils.resize(grayScaleImage, 800, 800, 0, 0);
@@ -462,7 +411,7 @@ public class ApiController {
         return barcodeImageCandidates;
     }
 
-    public Mat detectMrz(Mat src){
+    private Mat detectMrz(Mat src){
         Mat img = OpenCVUtils.grayScale(src);
         double ratio = img.height() / 800.0;
         int width = (int) (img.size().width / ratio);

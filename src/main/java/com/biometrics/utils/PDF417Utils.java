@@ -1,19 +1,49 @@
 package com.biometrics.utils;
 
+import com.google.zxing.BinaryBitmap;
+import com.google.zxing.DecodeHintType;
+import com.google.zxing.LuminanceSource;
+import com.google.zxing.Result;
+import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
+import com.google.zxing.common.HybridBinarizer;
+import com.google.zxing.pdf417.PDF417Reader;
+
+import java.awt.image.BufferedImage;
 import java.util.*;
 import java.util.regex.Pattern;
 
-public class PDF417Parser {
+public class PDF417Utils {
 
-    private static TimeZone GMT_TIME_ZONE = TimeZone.getTimeZone("GMT");
-    private static String NAME_PATTERN = "(?:[a-zA-Z]|\\s|`)+";
-    private static String NUMBER_PATTERN = "\\d+";
-    private static String GENDER_PATTERN = "(?:M|F)";
-    private static String DATE_PATTERN = "\\d\\d\\/\\d\\d\\/\\d{4}";
-    private static String UPPER_CASE_LETTER_PATTERN = "[A-Z]";
-    private static String DIGIT_PATTERN = "\\d";
-    private static Pattern PDF417_PATTERN_TYPE_1 = Pattern.compile("^" + NUMBER_PATTERN + "@" + NAME_PATTERN + "@" + NAME_PATTERN + "@" + GENDER_PATTERN + "@" + NUMBER_PATTERN + "@" + UPPER_CASE_LETTER_PATTERN + "@" + DATE_PATTERN);
-    private static Pattern PDF417_PATTERN_TYPE_2 = Pattern.compile("^@" + NUMBER_PATTERN + "\\s*@" + UPPER_CASE_LETTER_PATTERN +"@" + DIGIT_PATTERN + "@" + NAME_PATTERN + "@" + NAME_PATTERN + "@" + NAME_PATTERN + "@" + DATE_PATTERN + "@" + GENDER_PATTERN + "@");
+    private static final PDF417Reader pdf417Reader;
+    private static final TimeZone GMT_TIME_ZONE = TimeZone.getTimeZone("GMT");
+    private static final String NAME_PATTERN = "(?:[a-zA-Z]|\\s|`)+";
+    private static final String NUMBER_PATTERN = "\\d+";
+    private static final String GENDER_PATTERN = "(?:M|F)";
+    private static final String DATE_PATTERN = "\\d\\d\\/\\d\\d\\/\\d{4}";
+    private static final String UPPER_CASE_LETTER_PATTERN = "[A-Z]";
+    private static final String DIGIT_PATTERN = "\\d";
+    private static final Pattern PDF417_PATTERN_TYPE_1 = Pattern.compile("^" + NUMBER_PATTERN + "@" + NAME_PATTERN + "@" + NAME_PATTERN + "@" + GENDER_PATTERN + "@" + NUMBER_PATTERN + "@" + UPPER_CASE_LETTER_PATTERN + "@" + DATE_PATTERN);
+    private static final Pattern PDF417_PATTERN_TYPE_2 = Pattern.compile("^@" + NUMBER_PATTERN + "\\s*@" + UPPER_CASE_LETTER_PATTERN +"@" + DIGIT_PATTERN + "@" + NAME_PATTERN + "@" + NAME_PATTERN + "@" + NAME_PATTERN + "@" + DATE_PATTERN + "@" + GENDER_PATTERN + "@");
+
+    static {
+        pdf417Reader = new PDF417Reader();
+    }
+
+    public static String readCode(BufferedImage image) {
+        String pdf417Code = null;
+        try {
+            LuminanceSource source = new BufferedImageLuminanceSource(image);
+            BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+            Result result = pdf417Reader.decode(bitmap, new EnumMap<>(DecodeHintType.class));
+            if (result != null) {
+                String resultText = result.getText();
+                if (resultText != null && !resultText.isEmpty()) {
+                    pdf417Code = resultText;
+                }
+            }
+        } catch (Exception ex) {}
+        return pdf417Code;
+    }
 
     public static Map<String, Object> parseCode(String pdf417code) {
         pdf417code = pdf417code.trim();
@@ -69,7 +99,7 @@ public class PDF417Parser {
         int month = Integer.parseInt(text.substring(3,5)) - 1;
         int year = Integer.parseInt(text.substring(6));
         Calendar calendar = new GregorianCalendar(year, month, dayOfMonth);
-        calendar.setTimeZone(PDF417Parser.GMT_TIME_ZONE);
+        calendar.setTimeZone(PDF417Utils.GMT_TIME_ZONE);
         return calendar.getTimeInMillis();
     }
 }

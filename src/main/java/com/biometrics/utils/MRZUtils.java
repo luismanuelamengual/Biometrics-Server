@@ -1,19 +1,57 @@
 package com.biometrics.utils;
 
+import net.sourceforge.tess4j.Tesseract;
+import net.sourceforge.tess4j.util.LoadLibs;
+
+import java.awt.image.BufferedImage;
 import java.util.*;
 
-public class MRZParser {
+public class MRZUtils {
 
-    private static int[] MRZ_WEIGHTS = {7, 3, 1};
-    private static int CURRENT_YEAR_VALUE;
-    private static int CURRENT_YEAR_CENTURY;
-    private static TimeZone GMT_TIME_ZONE = TimeZone.getTimeZone("GMT");
-    private static String ID_ARG_PREFIX = "IDARG";
+    private static final Tesseract tesseract;
+    private static final int[] MRZ_WEIGHTS = {7, 3, 1};
+    private static final int CURRENT_YEAR_VALUE;
+    private static final int CURRENT_YEAR_CENTURY;
+    private static final TimeZone GMT_TIME_ZONE = TimeZone.getTimeZone("GMT");
+    private static final String ID_ARG_PREFIX = "IDARG";
 
     static {
         int currentYear = Calendar.getInstance().get(Calendar.YEAR);
-        MRZParser.CURRENT_YEAR_VALUE = currentYear % 100;
-        MRZParser.CURRENT_YEAR_CENTURY = currentYear - CURRENT_YEAR_VALUE;
+        CURRENT_YEAR_VALUE = currentYear % 100;
+        CURRENT_YEAR_CENTURY = currentYear - CURRENT_YEAR_VALUE;
+        tesseract = new Tesseract();
+        tesseract.setDatapath(LoadLibs.extractTessResources("tessdata").getAbsolutePath());
+        tesseract.setLanguage("spa");
+        tesseract.setTessVariable("debug_file", "/dev/null");
+        tesseract.setTessVariable("tessedit_char_whitelist", "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<");
+    }
+
+    public static String readCode(BufferedImage image) {
+        String mrzCode = null;
+        try {
+            String mrzCodeText = tesseract.doOCR(image);
+            if (mrzCodeText != null && !mrzCodeText.isEmpty() && mrzCodeText.length() > 40 && mrzCodeText.indexOf("<<") > 0) {
+                mrzCodeText = mrzCodeText.replaceAll("\n", "");
+                if (mrzCodeText.startsWith("1ID")) {
+                    mrzCodeText = mrzCodeText.replaceFirst("1ID", "ID");
+                }
+                if (mrzCodeText.startsWith("1D")) {
+                    mrzCodeText = mrzCodeText.replaceFirst("1D", "ID");
+                }
+                if (mrzCodeText.startsWith(ID_ARG_PREFIX)) {
+                    mrzCodeText = mrzCodeText.replaceFirst("<0O<", "<0<");
+                    mrzCodeText = mrzCodeText.replaceFirst("<0OD<", "<0<");
+                    mrzCodeText = mrzCodeText.replaceFirst("<O<", "<0<");
+                    mrzCodeText = mrzCodeText.replaceFirst("<OD<", "<0<");
+                    mrzCodeText = mrzCodeText.replaceFirst("<D<", "<0<");
+                    mrzCodeText = mrzCodeText.replaceFirst("<B<", "<8<");
+                    mrzCodeText = mrzCodeText.replaceFirst("<A<", "<4<");
+                    mrzCodeText = mrzCodeText.replaceFirst("<0D<", "<0<");
+                    mrzCode = mrzCodeText;
+                }
+            }
+        } catch (Exception ex) {}
+        return mrzCode;
     }
 
     public static Map<String, Object> parseCode(String mrzCode) {
@@ -30,8 +68,11 @@ public class MRZParser {
             String section2 = null;
             int line3StartIndex = line2StartIndex;
             for (line3StartIndex = mrzCode.indexOf("<<", line2StartIndex); line3StartIndex < mrzCode.length(); line3StartIndex++) {
-                if (mrzCode.charAt(line3StartIndex) != '<') {
-                    line3StartIndex++;
+                char character = mrzCode.charAt(line3StartIndex);
+                if (character != '<') {
+                    if (Character.isDigit(character)) {
+                        line3StartIndex++;
+                    }
                     section2 = mrzCode.substring(line2StartIndex, line3StartIndex);
                     break;
                 }
@@ -59,11 +100,13 @@ public class MRZParser {
             if (expirationDateCheckSum != expirationDateCalculatedCheckSum) {
                 throw new RuntimeException("Failed expiration date checksum");
             }
-            String mrzField = documentField + '<' + documentCheckSum + birthDateField + birthDateCheckSum + expirationDateField + expirationDateCheckSum;
-            char mrzChecksum = section2.charAt(29);
-            char mrzCalculatedChecksum = calculateMRZChecksumDigitChar(mrzField);
-            if (mrzChecksum != mrzCalculatedChecksum) {
-                throw new RuntimeException("Failed mrz checksum");
+            char mrzChecksum = section2.charAt(section2.length()-1);
+            if (Character.isDigit(mrzChecksum)) {
+                String mrzField = documentField + '<' + documentCheckSum + birthDateField + birthDateCheckSum + expirationDateField + expirationDateCheckSum;
+                char mrzCalculatedChecksum = calculateMRZChecksumDigitChar(mrzField);
+                if (mrzChecksum != mrzCalculatedChecksum) {
+                    throw new RuntimeException("Failed mrz checksum");
+                }
             }
             String[] name = section3.split("<<");
             String lastNameField = name[0].replace("<", " ");
@@ -129,11 +172,11 @@ public class MRZParser {
 
     private static long formatDate(final String text, final boolean acceptsFutureDates) {
         int yearValue = Integer.parseInt(text.substring(0,2));
-        int year = (!acceptsFutureDates && yearValue > MRZParser.CURRENT_YEAR_VALUE ? (MRZParser.CURRENT_YEAR_CENTURY - 100) : MRZParser.CURRENT_YEAR_CENTURY) + yearValue;
+        int year = (!acceptsFutureDates && yearValue > MRZUtils.CURRENT_YEAR_VALUE ? (MRZUtils.CURRENT_YEAR_CENTURY - 100) : MRZUtils.CURRENT_YEAR_CENTURY) + yearValue;
         int month = Integer.parseInt(text.substring(2,4)) - 1;
         int dayOfMonth = Integer.parseInt(text.substring(4,6));
         Calendar calendar = new GregorianCalendar(year, month, dayOfMonth);
-        calendar.setTimeZone(MRZParser.GMT_TIME_ZONE);
+        calendar.setTimeZone(MRZUtils.GMT_TIME_ZONE);
         return calendar.getTimeInMillis();
     }
 }
