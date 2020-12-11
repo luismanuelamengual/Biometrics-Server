@@ -1,11 +1,7 @@
 package com.biometrics.api.v1;
 
-import com.amazonaws.services.rekognition.AmazonRekognition;
-import com.amazonaws.services.rekognition.AmazonRekognitionClientBuilder;
-import com.amazonaws.services.rekognition.model.CompareFacesMatch;
-import com.amazonaws.services.rekognition.model.CompareFacesRequest;
-import com.amazonaws.services.rekognition.model.CompareFacesResult;
 import com.biometrics.ResponseException;
+import com.biometrics.utils.AmazonUtils;
 import com.biometrics.utils.MRZUtils;
 import com.biometrics.utils.OpenCVUtils;
 import com.biometrics.utils.PDF417Utils;
@@ -20,7 +16,6 @@ import org.opencv.core.*;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -59,14 +54,12 @@ public class ApiController {
     private CascadeClassifier profileFaceClassifier;
     private CascadeClassifier eyeClassifier;
     private CascadeClassifier eyePairClassifier;
-    private AmazonRekognition rekognitionClient;
 
     public ApiController() {
         faceClassfier = OpenCVUtils.getClassfierFromResource("cascades/face.xml");
         profileFaceClassifier = OpenCVUtils.getClassfierFromResource("cascades/profile-face.xml");
         eyeClassifier = OpenCVUtils.getClassfierFromResource("cascades/eye.xml");
         eyePairClassifier = OpenCVUtils.getClassfierFromResource("cascades/eye-pair.xml");
-        rekognitionClient = AmazonRekognitionClientBuilder.defaultClient();
     }
 
     @Post("check_liveness_instruction")
@@ -193,7 +186,7 @@ public class ApiController {
                 break;
             }
 
-            float similarity = compareFacesInImages (imageBytesList.get(0), imageBytesList.get(i));
+            float similarity = AmazonUtils.compareFaces(imageBytesList.get(0), imageBytesList.get(i));
             if (similarity <= 0) {
                 livenessStatusOk = false;
                 break;
@@ -219,7 +212,7 @@ public class ApiController {
         byte[] selfieBytes = OpenCVUtils.getImageBytes(selfieMat);
         byte[] documentSelfieBytes = OpenCVUtils.getImageBytes(documentFaceMat);
         boolean match = false;
-        float similarity = compareFacesInImages (selfieBytes, documentSelfieBytes);
+        float similarity = AmazonUtils.compareFaces(selfieBytes, documentSelfieBytes);
         if (similarity > 0) {
             match = true;
         }
@@ -342,24 +335,6 @@ public class ApiController {
             }
         }
         return pdf417Code;
-    }
-
-    private float compareFacesInImages (byte[] image1Bytes, byte[] image2Bytes) {
-        com.amazonaws.services.rekognition.model.Image image1 = new com.amazonaws.services.rekognition.model.Image().withBytes(ByteBuffer.wrap(image1Bytes));;
-        com.amazonaws.services.rekognition.model.Image image2 = new com.amazonaws.services.rekognition.model.Image().withBytes(ByteBuffer.wrap(image2Bytes));;
-        CompareFacesRequest request = new CompareFacesRequest().withSourceImage(image1).withTargetImage(image2).withSimilarityThreshold(70F);
-        float similarity = 0;
-        try {
-            CompareFacesResult compareFacesResult = rekognitionClient.compareFaces(request);
-            List<CompareFacesMatch> comparissonResults = compareFacesResult.getFaceMatches();
-            if (comparissonResults != null) {
-                for (CompareFacesMatch comparissonResult : comparissonResults) {
-                    similarity = comparissonResult.getSimilarity();
-                    break;
-                }
-            }
-        } catch (Exception ex) {}
-        return similarity;
     }
 
     private List<Mat> detectPDF417(Mat src){
