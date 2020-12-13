@@ -38,14 +38,9 @@ public class MRZUtils {
 
     private static final Tesseract tesseract;
     private static final int[] MRZ_WEIGHTS = {7, 3, 1};
-    private static final int CURRENT_YEAR_VALUE;
-    private static final int CURRENT_YEAR_CENTURY;
     private static final TimeZone GMT_TIME_ZONE = TimeZone.getTimeZone("GMT");
 
     static {
-        int currentYear = Calendar.getInstance().get(Calendar.YEAR);
-        CURRENT_YEAR_VALUE = currentYear % 100;
-        CURRENT_YEAR_CENTURY = currentYear - CURRENT_YEAR_VALUE;
         tesseract = new Tesseract();
         tesseract.setDatapath(LoadLibs.extractTessResources("tessdata").getAbsolutePath());
         tesseract.setLanguage("spa");
@@ -279,8 +274,11 @@ public class MRZUtils {
     }
 
     private static long formatDate(final String text, final boolean acceptsFutureDates) {
+        int currentYear = Calendar.getInstance().get(Calendar.YEAR);
+        int currentYearValue = currentYear % 100;
+        int currentYearCentury = currentYear - currentYearValue;
         int yearValue = Integer.parseInt(text.substring(0,2));
-        int year = (!acceptsFutureDates && yearValue > CURRENT_YEAR_VALUE ? (CURRENT_YEAR_CENTURY - 100) : CURRENT_YEAR_CENTURY) + yearValue;
+        int year = (!acceptsFutureDates && yearValue > currentYearValue ? (currentYearCentury - 100) : currentYearCentury) + yearValue;
         int month = Integer.parseInt(text.substring(2,4)) - 1;
         int dayOfMonth = Integer.parseInt(text.substring(4,6));
         Calendar calendar = new GregorianCalendar(year, month, dayOfMonth);
