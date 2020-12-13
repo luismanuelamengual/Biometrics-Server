@@ -21,7 +21,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import static org.neogroup.warp.Warp.getLogger;
 import static org.opencv.core.CvType.CV_32F;
 import static org.opencv.core.CvType.CV_64F;
 
@@ -63,10 +62,10 @@ public class ApiController {
     }
 
     @Post("check_liveness_instruction")
-    public DataObject checkLivenessInstruction(@Parameter("instruction") String instruction, @Parameter("selfie") byte[] selfie) throws Exception {
+    public DataObject checkLivenessInstruction(@Parameter("instruction") String instruction, @Parameter("selfie") byte[] selfie) {
 
         if (!instruction.equals(FRONTAL_FACE_INSTRUCTION) && !instruction.equals(LEFT_PROFILE_FACE_INSTRUCTION) && !instruction.equals(RIGHT_PROFILE_FACE_INSTRUCTION)) {
-            throw new Exception("Unrecognized liveness instruction");
+            throw new ResponseException("Unrecognized liveness instruction");
         }
 
         Mat image = OpenCVUtils.getImage(selfie);
@@ -162,7 +161,7 @@ public class ApiController {
     }
 
     @Post("check_liveness_images")
-    public DataObject checkLivenessImages(Request request) throws Exception {
+    public DataObject checkLivenessImages(Request request) {
         boolean livenessStatusOk = true;
         int[] histSize = { 50, 60 };
         float[] ranges = { 0, 180, 0, 256 };
@@ -222,7 +221,7 @@ public class ApiController {
     }
 
     @Post("scan_document_data")
-    public DataObject scanDocument(@Parameter("documentFront") byte[] documentFront, @Parameter("documentBack") byte[] documentBack) throws Exception {
+    public DataObject scanDocument(@Parameter("documentFront") byte[] documentFront, @Parameter("documentBack") byte[] documentBack) {
 
         DataObject response = null;
         String pdf417RawText = getPDF417CodeFromImage(documentFront);
@@ -258,7 +257,7 @@ public class ApiController {
     }
 
     @Post("scan_barcode_data")
-    public DataObject scanBarcode (@Body byte[] imageBytes) throws Exception {
+    public DataObject scanBarcode (@Body byte[] imageBytes) {
         DataObject response = null;
         String pdf417RawText = getPDF417CodeFromImage(imageBytes);
         if (pdf417RawText != null) {
@@ -274,7 +273,7 @@ public class ApiController {
     }
 
     @Post("scan_mrz_data")
-    public DataObject scanMRZ (@Body byte[] imageBytes) throws Exception {
+    public DataObject scanMRZ (@Body byte[] imageBytes) {
         DataObject response = null;
         String mrzRawText = getMRZCodeFromImage(imageBytes);
         if (mrzRawText != null) {
