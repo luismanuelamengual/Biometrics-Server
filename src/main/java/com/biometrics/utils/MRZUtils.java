@@ -10,12 +10,37 @@ import static org.neogroup.warp.Warp.getLogger;
 
 public class MRZUtils {
 
+    private static final String EMPTY = "";
+    private static final String EMPTY_SPACE = " ";
+    private static final String RETURN = "\n";
+    private static final String ID_PREFIX = "ID";
+    private static final String ID_ARG_PREFIX = "IDARG";
+    private static final String[] ID_FAIL_PREFIXES = {"1ID", "1D"};
+    private static final String FILLER_SEPARATOR = "<<";
+    private static final char FILLER = '<';
+    private static final char SPACE = ' ';
+    private static final char ZERO = '0';
+    private static final char ONE = '1';
+    private static final char FOUR = '4';
+    private static final char SIX = '6';
+    private static final char SEVEN = '7';
+    private static final char EIGHT = '8';
+    private static final char NINE = '9';
+    private static final char D = 'D';
+    private static final char O = 'O';
+    private static final char A = 'A';
+    private static final char B = 'B';
+    private static final char C = 'C';
+    private static final char I = 'I';
+    private static final char G = 'G';
+    private static final char T = 'T';
+    private static final char Z = 'Z';
+
     private static final Tesseract tesseract;
     private static final int[] MRZ_WEIGHTS = {7, 3, 1};
     private static final int CURRENT_YEAR_VALUE;
     private static final int CURRENT_YEAR_CENTURY;
     private static final TimeZone GMT_TIME_ZONE = TimeZone.getTimeZone("GMT");
-    private static final String ID_ARG_PREFIX = "IDARG";
 
     static {
         int currentYear = Calendar.getInstance().get(Calendar.YEAR);
@@ -34,32 +59,31 @@ public class MRZUtils {
         try {
             mrzCodeText = tesseract.doOCR(image);
             if (mrzCodeText != null && !mrzCodeText.isEmpty() && mrzCodeText.length() > 40 && mrzCodeText.indexOf("<<") > 0) {
-                mrzCodeText = mrzCodeText.replace(" ", "");
-                if (mrzCodeText.startsWith("1ID")) {
-                    mrzCodeText = mrzCodeText.replaceFirst("1ID", "ID");
-                }
-                if (mrzCodeText.startsWith("1D")) {
-                    mrzCodeText = mrzCodeText.replaceFirst("1D", "ID");
+                mrzCodeText = mrzCodeText.replace(EMPTY_SPACE, EMPTY);
+                for (String idFailPrefix : ID_FAIL_PREFIXES) {
+                    if (mrzCodeText.startsWith(idFailPrefix)) {
+                        mrzCodeText = mrzCodeText.replaceFirst(idFailPrefix, ID_PREFIX);
+                    }
                 }
                 if (mrzCodeText.startsWith(ID_ARG_PREFIX)) {
 
                     StringBuilder mrzCodeBuilder = new StringBuilder();
                     mrzCodeBuilder.append(ID_ARG_PREFIX);
-                    String[] sections = mrzCodeText.split("\n");
+                    String[] sections = mrzCodeText.split(RETURN);
 
                     //Linea 1
                     String currentLine = sections[0];
-                    int currentIndex = currentLine.indexOf('<');
+                    int currentIndex = currentLine.indexOf(FILLER);
                     for (int i = 5; i < currentIndex; i++) {
                         mrzCodeBuilder.append(readDigit(currentLine.charAt(i)));
                     }
                     String documentField = mrzCodeBuilder.substring(5, currentIndex);
                     char documentCalculatedCheckSum = calculateMRZChecksumDigitChar(documentField);
-                    mrzCodeBuilder.append('<');
+                    mrzCodeBuilder.append(FILLER);
                     char documentCheckSum = readDigit(currentLine.charAt(currentIndex + 1));
                     mrzCodeBuilder.append(documentCheckSum);
                     for (int i = mrzCodeBuilder.length(); i < 30; i++) {
-                        mrzCodeBuilder.append('<');
+                        mrzCodeBuilder.append(FILLER);
                     }
 
                     //Linea 2
@@ -79,7 +103,7 @@ public class MRZUtils {
                     char expirationDateCalculatedCheckSum = calculateMRZChecksumDigitChar(expirationDateField);
                     char expirationDateCheckSum = readDigit(currentLine.charAt(14));
                     mrzCodeBuilder.append(expirationDateCheckSum);
-                    currentIndex = currentLine.indexOf('<', 15);
+                    currentIndex = currentLine.indexOf(FILLER, 15);
                     for (int i = 15; i < currentIndex; i++) {
                         mrzCodeBuilder.append(readLetter(currentLine.charAt(i)));
                     }
@@ -93,7 +117,7 @@ public class MRZUtils {
                     currentLine = sections[2];
                     for (int i = 0; i < currentLine.length(); i++) {
                         char character = currentLine.charAt(i);
-                        if (character != '<') {
+                        if (character != FILLER) {
                             mrzCodeBuilder.append(readLetter(character));
                         } else {
                             mrzCodeBuilder.append(character);
@@ -102,7 +126,7 @@ public class MRZUtils {
                     int currentLength = mrzCodeBuilder.length();
                     if (currentLength < 90) {
                         for (int i = 0; i < (90 - currentLength); i++) {
-                            mrzCodeBuilder.append('<');
+                            mrzCodeBuilder.append(FILLER);
                         }
                     } else if (currentLength > 90) {
                         mrzCodeBuilder.delete(90, currentLength);
@@ -147,9 +171,9 @@ public class MRZUtils {
                 String birthDateField = section2.substring(0, 6);
                 String genderField = section2.substring(7, 8);
                 String expirationDateField = section2.substring(8, 14);
-                String[] name = section3.split("<<");
-                String lastNameField = name[0].replace("<", " ");
-                String firstNameField = name[1].replace("<", " ");
+                String[] name = section3.split(FILLER_SEPARATOR);
+                String lastNameField = name[0].replace(FILLER, SPACE);
+                String firstNameField = name[1].replace(FILLER, SPACE);
                 documentData = new HashMap<>();
                 documentData.put(Document.DOCUMENT_NUMBER_FIELD, formatDocumentNumber(documentField));
                 documentData.put(Document.BIRTH_DATE_FIELD, formatDate(birthDateField));
@@ -169,13 +193,13 @@ public class MRZUtils {
     private static char readLetter(char character) {
         if (!Character.isLetter(character)) {
             switch (character) {
-                case '0': character = 'O'; break;
-                case '1': character = 'I'; break;
-                case '4': character = 'A'; break;
-                case '6': character = 'G'; break;
-                case '7': character = 'T'; break;
-                case '8': character = 'B'; break;
-                case '<': character = 'C'; break;
+                case ZERO: character = O; break;
+                case ONE: character = I; break;
+                case FOUR: character = A; break;
+                case SIX: character = G; break;
+                case SEVEN: character = T; break;
+                case EIGHT: character = B; break;
+                case FILLER: character = C; break;
                 default: throw new RuntimeException("Unexpected character \"" + character + "\"");
             }
         }
@@ -185,14 +209,14 @@ public class MRZUtils {
     private static char readDigit(char character) {
         if (!Character.isDigit(character)) {
             switch (character) {
-                case 'D': character = '0'; break;
-                case 'O': character = '0'; break;
-                case 'A': character = '4'; break;
-                case 'B': character = '8'; break;
-                case 'I': character = '1'; break;
-                case 'G': character = '6'; break;
-                case 'T': character = '7'; break;
-                case '<': character = '6'; break;
+                case D: character = ZERO; break;
+                case O: character = ZERO; break;
+                case A: character = FOUR; break;
+                case B: character = EIGHT; break;
+                case I: character = ONE; break;
+                case G: character = SIX; break;
+                case T: character = SEVEN; break;
+                case FILLER: character = SIX; break;
                 default: throw new RuntimeException("Unexpected character \"" + character + "\"");
             }
         }
@@ -200,9 +224,9 @@ public class MRZUtils {
     }
 
     private static char readSeparator(char character) {
-        if (character != '<') {
+        if (character != FILLER) {
             switch (character) {
-                case 'C': character = '<'; break;
+                case C: character = FILLER; break;
                 default: throw new RuntimeException("Unexpected character \"" + character + "\"");
             }
         }
@@ -214,12 +238,12 @@ public class MRZUtils {
         for (int i = 0; i < text.length(); i++) {
             char character = text.charAt(i);
             int characterValue;
-            if (character == '<') {
+            if (character == FILLER) {
                 characterValue = 0;
-            } else if (character >= '0' && character <= '9') {
-                characterValue = character - '0';
-            } else if (character >= 'A' && character <= 'Z') {
-                characterValue = character - 'A' + 10;
+            } else if (character >= ZERO && character <= NINE) {
+                characterValue = character - ZERO;
+            } else if (character >= A && character <= Z) {
+                characterValue = character - A + 10;
             } else {
                 throw new RuntimeException("Unrecognized character \"" + character + "\" in MRZ ");
             }
@@ -229,7 +253,7 @@ public class MRZUtils {
     }
 
     private static char calculateMRZChecksumDigitChar(String text) {
-        return (char) ('0' + calculateMRZChecksumDigit(text));
+        return (char) (ZERO + calculateMRZChecksumDigit(text));
     }
 
     private static int formatDocumentNumber(final String text) {
@@ -256,11 +280,11 @@ public class MRZUtils {
 
     private static long formatDate(final String text, final boolean acceptsFutureDates) {
         int yearValue = Integer.parseInt(text.substring(0,2));
-        int year = (!acceptsFutureDates && yearValue > MRZUtils.CURRENT_YEAR_VALUE ? (MRZUtils.CURRENT_YEAR_CENTURY - 100) : MRZUtils.CURRENT_YEAR_CENTURY) + yearValue;
+        int year = (!acceptsFutureDates && yearValue > CURRENT_YEAR_VALUE ? (CURRENT_YEAR_CENTURY - 100) : CURRENT_YEAR_CENTURY) + yearValue;
         int month = Integer.parseInt(text.substring(2,4)) - 1;
         int dayOfMonth = Integer.parseInt(text.substring(4,6));
         Calendar calendar = new GregorianCalendar(year, month, dayOfMonth);
-        calendar.setTimeZone(MRZUtils.GMT_TIME_ZONE);
+        calendar.setTimeZone(GMT_TIME_ZONE);
         return calendar.getTimeInMillis();
     }
 }
