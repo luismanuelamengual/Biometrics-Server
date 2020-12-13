@@ -1,5 +1,6 @@
 package com.biometrics.utils;
 
+import com.biometrics.ResponseException;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.util.LoadLibs;
 
@@ -31,7 +32,7 @@ public class MRZUtils {
         try {
             String mrzCodeText = tesseract.doOCR(image);
             if (mrzCodeText != null && !mrzCodeText.isEmpty() && mrzCodeText.length() > 40 && mrzCodeText.indexOf("<<") > 0) {
-                mrzCodeText = mrzCodeText.replaceAll("\n", "");
+                mrzCodeText = mrzCodeText.replace(" ", "");
                 if (mrzCodeText.startsWith("1ID")) {
                     mrzCodeText = mrzCodeText.replaceFirst("1ID", "ID");
                 }
@@ -39,47 +40,120 @@ public class MRZUtils {
                     mrzCodeText = mrzCodeText.replaceFirst("1D", "ID");
                 }
                 if (mrzCodeText.startsWith(ID_ARG_PREFIX)) {
-                    mrzCodeText = mrzCodeText.replaceFirst("<0O<", "<0<");
-                    mrzCodeText = mrzCodeText.replaceFirst("<0OD<", "<0<");
-                    mrzCodeText = mrzCodeText.replaceFirst("<O<", "<0<");
-                    mrzCodeText = mrzCodeText.replaceFirst("<OD<", "<0<");
-                    mrzCodeText = mrzCodeText.replaceFirst("<D<", "<0<");
-                    mrzCodeText = mrzCodeText.replaceFirst("<B<", "<8<");
-                    mrzCodeText = mrzCodeText.replaceFirst("<A<", "<4<");
-                    mrzCodeText = mrzCodeText.replaceFirst("<0D<", "<0<");
-                    mrzCode = mrzCodeText;
+
+                    StringBuilder mrzCodeBuilder = new StringBuilder();
+                    mrzCodeBuilder.append(ID_ARG_PREFIX);
+                    String[] sections = mrzCodeText.split("\n");
+
+                    //Linea 1
+                    String currentLine = sections[0];
+                    int currentIndex = currentLine.indexOf('<');
+                    for (int i = 5; i < currentIndex; i++) {
+                        mrzCodeBuilder.append(readDigit(currentLine.charAt(i)));
+                    }
+                    mrzCodeBuilder.append('<');
+                    mrzCodeBuilder.append(readDigit(currentLine.charAt(currentIndex + 1)));
+                    for (int i = mrzCodeBuilder.length(); i < 30; i++) {
+                        mrzCodeBuilder.append('<');
+                    }
+
+                    //Linea 2
+                    currentLine = sections[1];
+                    for (int i = 0; i <= 6; i++) {
+                        mrzCodeBuilder.append(readDigit(currentLine.charAt(i)));
+                    }
+                    mrzCodeBuilder.append(currentLine.charAt(7));
+                    for (int i = 8; i <= 14; i++) {
+                        mrzCodeBuilder.append(readDigit(currentLine.charAt(i)));
+                    }
+                    currentIndex = currentLine.indexOf('<', 15);
+                    for (int i = 15; i < currentIndex; i++) {
+                        mrzCodeBuilder.append(readLetter(currentLine.charAt(i)));
+                    }
+                    for (int i = mrzCodeBuilder.length(); i < 59; i++) {
+                        mrzCodeBuilder.append('<');
+                    }
+                    mrzCodeBuilder.append(readDigit(currentLine.charAt(currentLine.length() - 1)));
+
+                    //Linea 3
+                    currentLine = sections[2];
+                    for (int i = 0; i < currentLine.length(); i++) {
+                        char character = currentLine.charAt(i);
+                        if (character != '<') {
+                            mrzCodeBuilder.append(readLetter(character));
+                        } else {
+                            mrzCodeBuilder.append(character);
+                        }
+                    }
+                    int currentLength = mrzCodeBuilder.length();
+                    if (currentLength < 90) {
+                        for (int i = 0; i < (90 - currentLength); i++) {
+                            mrzCodeBuilder.append('<');
+                        }
+                    } else if (currentLength > 90) {
+                        mrzCodeBuilder.delete(90, currentLength);
+                    }
+
+                    mrzCode = mrzCodeBuilder.toString();
                 }
             }
         } catch (Exception ex) {}
         return mrzCode;
     }
 
+    private static char readLetter(char character) {
+        if (!Character.isLetter(character)) {
+            switch (character) {
+                case '0': character = 'O'; break;
+                case '1': character = 'I'; break;
+                case '4': character = 'A'; break;
+                case '6': character = 'G'; break;
+                case '7': character = 'T'; break;
+                case '8': character = 'B'; break;
+                case '<': character = 'C'; break;
+                default: throw new RuntimeException("Invalid letter character \"" + character + "\"");
+            }
+        }
+        return character;
+    }
+
+    private static char readDigit(char character) {
+        if (!Character.isDigit(character)) {
+            switch (character) {
+                case 'D': character = '0'; break;
+                case 'O': character = '0'; break;
+                case 'A': character = '4'; break;
+                case 'B': character = '8'; break;
+                case 'I': character = '1'; break;
+                case 'G': character = '6'; break;
+                case 'T': character = '7'; break;
+                case '<': character = '6'; break;
+                default: throw new RuntimeException("Invalid digit character \"" + character + "\"");
+            }
+        }
+        return character;
+    }
+
+    private static char readSeparator(char character) {
+        if (character != '<') {
+            switch (character) {
+                case 'C': character = '<'; break;
+                default: throw new RuntimeException("Invalid separator character \"" + character + "\"");
+            }
+        }
+        return character;
+    }
+
     public static Map<String, Object> parseCode(String mrzCode) {
         Map<String, Object> documentData = null;
-        if (mrzCode.startsWith(ID_ARG_PREFIX) && mrzCode.length() > 80) {
-            String section1 = null;
-            int line2StartIndex = 0;
-            for (line2StartIndex = mrzCode.indexOf("<<"); line2StartIndex < mrzCode.length(); line2StartIndex++) {
-                if (mrzCode.charAt(line2StartIndex) != '<') {
-                    section1 = mrzCode.substring(0, line2StartIndex);
-                    break;
-                }
+        if (mrzCode.startsWith(ID_ARG_PREFIX)) {
+            if (mrzCode.length() != 90) {
+                throw new ResponseException("Invalid MRZ code !!");
             }
-            String section2 = null;
-            int line3StartIndex = line2StartIndex;
-            for (line3StartIndex = mrzCode.indexOf("<<", line2StartIndex); line3StartIndex < mrzCode.length(); line3StartIndex++) {
-                char character = mrzCode.charAt(line3StartIndex);
-                if (character != '<') {
-                    if (Character.isDigit(character)) {
-                        line3StartIndex++;
-                    }
-                    section2 = mrzCode.substring(line2StartIndex, line3StartIndex);
-                    break;
-                }
-            }
-            String section3 = mrzCode.substring(line3StartIndex);
 
-
+            String section1 = mrzCode.substring(0, 30);
+            String section2 = mrzCode.substring(30, 60);
+            String section3 = mrzCode.substring(60);
             int documentSeparatorIndex = section1.indexOf("<");
             String documentField = section1.substring(5, documentSeparatorIndex);
             char documentCheckSum = section1.charAt(documentSeparatorIndex+1);

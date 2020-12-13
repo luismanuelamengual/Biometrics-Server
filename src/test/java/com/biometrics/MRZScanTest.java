@@ -67,6 +67,11 @@ public class MRZScanTest extends BaseContext {
         testMRZResponse("documents/mrz/mrz12.jpeg");
     }
 
+    @Test
+    public void testMRZ13() throws Exception {
+        testMRZResponse("documents/mrz/mrz13.jpeg");
+    }
+
     public void testMRZResponse(String resourceName) throws Exception {
         try {
             DataObject response = api.scanMRZ(getImageFromResource(resourceName));
