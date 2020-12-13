@@ -231,16 +231,9 @@ public class ApiController {
         }
 
         if (pdf417RawText != null) {
-            try {
-                Map<String, Object> documentInformation = PDF417Utils.parseCode(pdf417RawText);
-                if (documentInformation != null && !documentInformation.isEmpty()){
-                    response = Data.object()
-                            .set(TYPE_PROPERTY_NAME, PDF417_TYPE)
-                            .set(RAW_PROPERTY_NAME, pdf417RawText)
-                            .set(INFORMATION_PROPERTY_NAME, documentInformation);
-                }
-            } catch (Exception ex) {
-                getLogger().warning("Unable to read PDF code: \"" + pdf417RawText + "\" !!");
+            Map<String, Object> documentInformation = PDF417Utils.parseCode(pdf417RawText);
+            if (documentInformation != null && !documentInformation.isEmpty()){
+                response = Data.object().set(TYPE_PROPERTY_NAME, PDF417_TYPE).set(RAW_PROPERTY_NAME, pdf417RawText).set(INFORMATION_PROPERTY_NAME, documentInformation);
             }
         }
 
@@ -251,16 +244,9 @@ public class ApiController {
             }
 
             if (mrzRawText != null) {
-                try {
-                    Map<String, Object> documentInformation = MRZUtils.parseCode(mrzRawText);
-                    if (documentInformation != null && !documentInformation.isEmpty()){
-                        response = Data.object()
-                                .set(TYPE_PROPERTY_NAME, MRZ_TYPE)
-                                .set(RAW_PROPERTY_NAME, mrzRawText)
-                                .set(INFORMATION_PROPERTY_NAME, documentInformation);
-                    }
-                } catch(Exception ex) {
-                    getLogger().warning("Unable to read MRZ code: \"" + mrzRawText + "\" !!");
+                Map<String, Object> documentInformation = MRZUtils.parseCode(mrzRawText);
+                if (documentInformation != null && !documentInformation.isEmpty()){
+                    response = Data.object().set(TYPE_PROPERTY_NAME, MRZ_TYPE).set(RAW_PROPERTY_NAME, mrzRawText).set(INFORMATION_PROPERTY_NAME, documentInformation);
                 }
             }
         }
@@ -276,14 +262,10 @@ public class ApiController {
         DataObject response = null;
         String pdf417RawText = getPDF417CodeFromImage(imageBytes);
         if (pdf417RawText != null) {
-            try {
-                Map<String, Object> documentInformation = PDF417Utils.parseCode(pdf417RawText);
-                if (documentInformation != null && !documentInformation.isEmpty()){
-                    response = Data.object()
-                            .set(RAW_PROPERTY_NAME, pdf417RawText)
-                            .set(INFORMATION_PROPERTY_NAME, documentInformation);
-                }
-            } catch (Exception ex) {}
+            Map<String, Object> documentInformation = PDF417Utils.parseCode(pdf417RawText);
+            if (documentInformation != null && !documentInformation.isEmpty()){
+                response = Data.object().set(RAW_PROPERTY_NAME, pdf417RawText).set(INFORMATION_PROPERTY_NAME, documentInformation);
+            }
         }
         if (response == null) {
             throw new ResponseException("Barcode data could not be read");
@@ -296,14 +278,10 @@ public class ApiController {
         DataObject response = null;
         String mrzRawText = getMRZCodeFromImage(imageBytes);
         if (mrzRawText != null) {
-            try {
-                Map<String, Object> documentInformation = MRZUtils.parseCode(mrzRawText);
-                if (documentInformation != null && !documentInformation.isEmpty()){
-                    response = Data.object()
-                            .set(RAW_PROPERTY_NAME, mrzRawText)
-                            .set(INFORMATION_PROPERTY_NAME, documentInformation);
-                }
-            } catch (Exception ex) {}
+            Map<String, Object> documentInformation = MRZUtils.parseCode(mrzRawText);
+            if (documentInformation != null && !documentInformation.isEmpty()){
+                response = Data.object().set(RAW_PROPERTY_NAME, mrzRawText).set(INFORMATION_PROPERTY_NAME, documentInformation);
+            }
         }
         if (response == null) {
             throw new ResponseException("MRZ data could not be read");

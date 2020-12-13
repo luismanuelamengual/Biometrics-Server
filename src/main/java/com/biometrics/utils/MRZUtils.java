@@ -1,11 +1,12 @@
 package com.biometrics.utils;
 
-import com.biometrics.ResponseException;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.util.LoadLibs;
 
 import java.awt.image.BufferedImage;
 import java.util.*;
+
+import static org.neogroup.warp.Warp.getLogger;
 
 public class MRZUtils {
 
@@ -29,8 +30,9 @@ public class MRZUtils {
 
     public static String readCode(BufferedImage image) {
         String mrzCode = null;
+        String mrzCodeText = null;
         try {
-            String mrzCodeText = tesseract.doOCR(image);
+            mrzCodeText = tesseract.doOCR(image);
             if (mrzCodeText != null && !mrzCodeText.isEmpty() && mrzCodeText.length() > 40 && mrzCodeText.indexOf("<<") > 0) {
                 mrzCodeText = mrzCodeText.replace(" ", "");
                 if (mrzCodeText.startsWith("1ID")) {
@@ -51,21 +53,32 @@ public class MRZUtils {
                     for (int i = 5; i < currentIndex; i++) {
                         mrzCodeBuilder.append(readDigit(currentLine.charAt(i)));
                     }
+                    String documentField = mrzCodeBuilder.substring(5, currentIndex);
+                    char documentCalculatedCheckSum = calculateMRZChecksumDigitChar(documentField);
                     mrzCodeBuilder.append('<');
-                    mrzCodeBuilder.append(readDigit(currentLine.charAt(currentIndex + 1)));
+                    char documentCheckSum = readDigit(currentLine.charAt(currentIndex + 1));
+                    mrzCodeBuilder.append(documentCheckSum);
                     for (int i = mrzCodeBuilder.length(); i < 30; i++) {
                         mrzCodeBuilder.append('<');
                     }
 
                     //Linea 2
                     currentLine = sections[1];
-                    for (int i = 0; i <= 6; i++) {
+                    for (int i = 0; i <= 5; i++) {
                         mrzCodeBuilder.append(readDigit(currentLine.charAt(i)));
                     }
+                    String birthDateField = mrzCodeBuilder.substring(mrzCodeBuilder.length() - 6);
+                    char birthDateCalculatedCheckSum = calculateMRZChecksumDigitChar(birthDateField);
+                    char birthDateCheckSum = readDigit(currentLine.charAt(6));
+                    mrzCodeBuilder.append(birthDateCheckSum);
                     mrzCodeBuilder.append(currentLine.charAt(7));
-                    for (int i = 8; i <= 14; i++) {
+                    for (int i = 8; i <= 13; i++) {
                         mrzCodeBuilder.append(readDigit(currentLine.charAt(i)));
                     }
+                    String expirationDateField = mrzCodeBuilder.substring(mrzCodeBuilder.length() - 6);
+                    char expirationDateCalculatedCheckSum = calculateMRZChecksumDigitChar(expirationDateField);
+                    char expirationDateCheckSum = readDigit(currentLine.charAt(14));
+                    mrzCodeBuilder.append(expirationDateCheckSum);
                     currentIndex = currentLine.indexOf('<', 15);
                     for (int i = 15; i < currentIndex; i++) {
                         mrzCodeBuilder.append(readLetter(currentLine.charAt(i)));
@@ -73,7 +86,8 @@ public class MRZUtils {
                     for (int i = mrzCodeBuilder.length(); i < 59; i++) {
                         mrzCodeBuilder.append('<');
                     }
-                    mrzCodeBuilder.append(readDigit(currentLine.charAt(currentLine.length() - 1)));
+                    char mrzChecksum = readDigit(currentLine.charAt(currentLine.length() - 1));
+                    mrzCodeBuilder.append(mrzChecksum);
 
                     //Linea 3
                     currentLine = sections[2];
@@ -94,11 +108,62 @@ public class MRZUtils {
                         mrzCodeBuilder.delete(90, currentLength);
                     }
 
+                    //Chequeos de checksum
+                    if (documentCheckSum != documentCalculatedCheckSum) {
+                        throw new RuntimeException("Failed document checksum");
+                    }
+                    if (birthDateCheckSum != birthDateCalculatedCheckSum) {
+                        throw new RuntimeException("Failed birth date checksum");
+                    }
+                    if (expirationDateCheckSum != expirationDateCalculatedCheckSum) {
+                        throw new RuntimeException("Failed expiration date checksum");
+                    }
+                    String mrzField = documentField + '<' + documentCheckSum + birthDateField + birthDateCheckSum + expirationDateField + expirationDateCheckSum;
+                    char mrzCalculatedChecksum = calculateMRZChecksumDigitChar(mrzField);
+                    if (mrzChecksum != mrzCalculatedChecksum) {
+                        throw new RuntimeException("Failed mrz checksum");
+                    }
                     mrzCode = mrzCodeBuilder.toString();
+                } else {
+                    throw new RuntimeException("Unrecognized mrz code type");
                 }
             }
-        } catch (Exception ex) {}
+        } catch (Exception ex) {
+            if (mrzCodeText != null) {
+                getLogger().warning("MRZ code \"" + mrzCodeText + "\" could not be processed: " + ex.getMessage());
+            }
+        }
         return mrzCode;
+    }
+
+    public static Map<String, Object> parseCode(String mrzCode) {
+        Map<String, Object> documentData = null;
+        try {
+            if (mrzCode.startsWith(ID_ARG_PREFIX)) {
+                String section1 = mrzCode.substring(0, 30);
+                String section2 = mrzCode.substring(30, 60);
+                String section3 = mrzCode.substring(60);
+                String documentField = section1.substring(5, section1.indexOf("<"));
+                String birthDateField = section2.substring(0, 6);
+                String genderField = section2.substring(7, 8);
+                String expirationDateField = section2.substring(8, 14);
+                String[] name = section3.split("<<");
+                String lastNameField = name[0].replace("<", " ");
+                String firstNameField = name[1].replace("<", " ");
+                documentData = new HashMap<>();
+                documentData.put(Document.DOCUMENT_NUMBER_FIELD, formatDocumentNumber(documentField));
+                documentData.put(Document.BIRTH_DATE_FIELD, formatDate(birthDateField));
+                documentData.put(Document.EXPIRATION_DATE_FIELD, formatDate(expirationDateField, true));
+                documentData.put(Document.GENDER_PROPERTY_FIELD, genderField);
+                documentData.put(Document.FIRST_NAME_FIELD, formatName(firstNameField));
+                documentData.put(Document.LAST_NAME_FIELD, formatName(lastNameField));
+            } else {
+                throw new RuntimeException("Unrecognized mrz code type");
+            }
+        } catch (Exception ex) {
+            getLogger().warning("MRZ code \"" + mrzCode + "\" could not be parsed: " + ex.getMessage());
+        }
+        return documentData;
     }
 
     private static char readLetter(char character) {
@@ -111,7 +176,7 @@ public class MRZUtils {
                 case '7': character = 'T'; break;
                 case '8': character = 'B'; break;
                 case '<': character = 'C'; break;
-                default: throw new RuntimeException("Invalid letter character \"" + character + "\"");
+                default: throw new RuntimeException("Unexpected character \"" + character + "\"");
             }
         }
         return character;
@@ -128,7 +193,7 @@ public class MRZUtils {
                 case 'G': character = '6'; break;
                 case 'T': character = '7'; break;
                 case '<': character = '6'; break;
-                default: throw new RuntimeException("Invalid digit character \"" + character + "\"");
+                default: throw new RuntimeException("Unexpected character \"" + character + "\"");
             }
         }
         return character;
@@ -138,65 +203,10 @@ public class MRZUtils {
         if (character != '<') {
             switch (character) {
                 case 'C': character = '<'; break;
-                default: throw new RuntimeException("Invalid separator character \"" + character + "\"");
+                default: throw new RuntimeException("Unexpected character \"" + character + "\"");
             }
         }
         return character;
-    }
-
-    public static Map<String, Object> parseCode(String mrzCode) {
-        Map<String, Object> documentData = null;
-        if (mrzCode.startsWith(ID_ARG_PREFIX)) {
-            if (mrzCode.length() != 90) {
-                throw new ResponseException("Invalid MRZ code !!");
-            }
-
-            String section1 = mrzCode.substring(0, 30);
-            String section2 = mrzCode.substring(30, 60);
-            String section3 = mrzCode.substring(60);
-            int documentSeparatorIndex = section1.indexOf("<");
-            String documentField = section1.substring(5, documentSeparatorIndex);
-            char documentCheckSum = section1.charAt(documentSeparatorIndex+1);
-            char documentCalculatedCheckSum = calculateMRZChecksumDigitChar(documentField);
-            if (documentCheckSum != documentCalculatedCheckSum) {
-                throw new RuntimeException("Failed document checksum");
-            }
-            String birthDateField = section2.substring(0, 6);
-            char birthDateCheckSum = section2.charAt(6);
-            char birthDateCalculatedCheckSum = calculateMRZChecksumDigitChar(birthDateField);
-            if (birthDateCheckSum != birthDateCalculatedCheckSum) {
-                throw new RuntimeException("Failed birth date checksum");
-            }
-            String genderField = section2.substring(7,8);
-            String expirationDateField = section2.substring(8, 14);
-            char expirationDateCheckSum = section2.charAt(14);
-            char expirationDateCalculatedCheckSum = calculateMRZChecksumDigitChar(expirationDateField);
-            if (expirationDateCheckSum != expirationDateCalculatedCheckSum) {
-                throw new RuntimeException("Failed expiration date checksum");
-            }
-            char mrzChecksum = section2.charAt(section2.length()-1);
-            if (Character.isDigit(mrzChecksum)) {
-                String mrzField = documentField + '<' + documentCheckSum + birthDateField + birthDateCheckSum + expirationDateField + expirationDateCheckSum;
-                char mrzCalculatedChecksum = calculateMRZChecksumDigitChar(mrzField);
-                if (mrzChecksum != mrzCalculatedChecksum) {
-                    throw new RuntimeException("Failed mrz checksum");
-                }
-            }
-            String[] name = section3.split("<<");
-            String lastNameField = name[0].replace("<", " ");
-            String firstNameField = name[1].replace("<", " ");
-
-            documentData = new HashMap<>();
-            documentData.put(Document.DOCUMENT_NUMBER_FIELD, formatDocumentNumber(documentField));
-            documentData.put(Document.BIRTH_DATE_FIELD, formatDate(birthDateField));
-            documentData.put(Document.EXPIRATION_DATE_FIELD, formatDate(expirationDateField, true));
-            documentData.put(Document.GENDER_PROPERTY_FIELD, genderField);
-            documentData.put(Document.FIRST_NAME_FIELD, formatName(firstNameField));
-            documentData.put(Document.LAST_NAME_FIELD, formatName(lastNameField));
-        } else {
-            throw new RuntimeException ("Unrecognized mrz code \"" + mrzCode + "\"");
-        }
-        return documentData;
     }
 
     private static int calculateMRZChecksumDigit(String text) {

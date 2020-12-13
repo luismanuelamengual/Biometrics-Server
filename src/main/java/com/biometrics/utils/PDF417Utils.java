@@ -12,6 +12,8 @@ import java.awt.image.BufferedImage;
 import java.util.*;
 import java.util.regex.Pattern;
 
+import static org.neogroup.warp.Warp.getLogger;
+
 public class PDF417Utils {
 
     private static final PDF417Reader pdf417Reader;
@@ -46,28 +48,32 @@ public class PDF417Utils {
     }
 
     public static Map<String, Object> parseCode(String pdf417code) {
+        Map<String, Object> documentData = null;
         pdf417code = pdf417code.trim();
-        Map<String, Object>  documentData = null;
-        if (PDF417_PATTERN_TYPE_1.matcher(pdf417code).find()){
-            String[] fields = pdf417code.split("@");
-            documentData = new HashMap<>();
-            documentData.put(Document.FIRST_NAME_FIELD, formatName(fields[2]));
-            documentData.put(Document.LAST_NAME_FIELD, formatName(fields[1]));
-            documentData.put(Document.DOCUMENT_NUMBER_FIELD, formatDocumentNumber(fields[4]));
-            documentData.put(Document.GENDER_PROPERTY_FIELD, fields[3]);
-            documentData.put(Document.BIRTH_DATE_FIELD, formatDate(fields[6]));
-            documentData.put(Document.NATIONAL_IDENTFICATION_NUMBER_FIELD, formatNationalIdentificationNumber(fields[0]));
-        } else if (PDF417_PATTERN_TYPE_2.matcher(pdf417code).find()) {
-            String[] fields = pdf417code.split("@");
-            documentData = new HashMap<>();
-            documentData.put(Document.FIRST_NAME_FIELD, formatName(fields[5]));
-            documentData.put(Document.LAST_NAME_FIELD, formatName(fields[4]));
-            documentData.put(Document.DOCUMENT_NUMBER_FIELD, formatDocumentNumber(fields[1]));
-            documentData.put(Document.GENDER_PROPERTY_FIELD, fields[8]);
-            documentData.put(Document.BIRTH_DATE_FIELD, formatDate(fields[7]));
-            documentData.put(Document.NATIONAL_IDENTFICATION_NUMBER_FIELD, formatNationalIdentificationNumber(fields[10]));
-        } else {
-            throw new RuntimeException ("Unrecognized pdf417 code \"" + pdf417code + "\"");
+        try {
+            if (PDF417_PATTERN_TYPE_1.matcher(pdf417code).find()) {
+                String[] fields = pdf417code.split("@");
+                documentData = new HashMap<>();
+                documentData.put(Document.FIRST_NAME_FIELD, formatName(fields[2]));
+                documentData.put(Document.LAST_NAME_FIELD, formatName(fields[1]));
+                documentData.put(Document.DOCUMENT_NUMBER_FIELD, formatDocumentNumber(fields[4]));
+                documentData.put(Document.GENDER_PROPERTY_FIELD, fields[3]);
+                documentData.put(Document.BIRTH_DATE_FIELD, formatDate(fields[6]));
+                documentData.put(Document.NATIONAL_IDENTFICATION_NUMBER_FIELD, formatNationalIdentificationNumber(fields[0]));
+            } else if (PDF417_PATTERN_TYPE_2.matcher(pdf417code).find()) {
+                String[] fields = pdf417code.split("@");
+                documentData = new HashMap<>();
+                documentData.put(Document.FIRST_NAME_FIELD, formatName(fields[5]));
+                documentData.put(Document.LAST_NAME_FIELD, formatName(fields[4]));
+                documentData.put(Document.DOCUMENT_NUMBER_FIELD, formatDocumentNumber(fields[1]));
+                documentData.put(Document.GENDER_PROPERTY_FIELD, fields[8]);
+                documentData.put(Document.BIRTH_DATE_FIELD, formatDate(fields[7]));
+                documentData.put(Document.NATIONAL_IDENTFICATION_NUMBER_FIELD, formatNationalIdentificationNumber(fields[10]));
+            } else {
+                throw new RuntimeException("Unrecognized pdf417 type");
+            }
+        } catch (Exception ex) {
+            getLogger().warning("PDF417 code \"" + pdf417code + "\" could not be parsed: " + ex.getMessage());
         }
         return documentData;
     }
