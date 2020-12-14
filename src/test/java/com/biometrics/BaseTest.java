@@ -9,11 +9,11 @@ import org.apache.log4j.varia.NullAppender;
 import java.io.IOException;
 import java.util.Objects;
 
-public abstract class BaseContext {
+public abstract class BaseTest {
 
     protected ApiController api;
 
-    public BaseContext() {
+    public BaseTest() {
         OpenCVUtils.initializeLibrary();
         Logger.getRootLogger().setLevel(Level.OFF);
         Logger.getRootLogger().removeAllAppenders();

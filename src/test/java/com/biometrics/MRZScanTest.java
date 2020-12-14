@@ -5,7 +5,7 @@ import org.neogroup.warp.data.DataObject;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class MRZScanTest extends BaseContext {
+public class MRZScanTest extends BaseTest {
 
     @Test
     public void testMRZ1() throws Exception {
