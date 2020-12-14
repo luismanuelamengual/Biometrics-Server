@@ -72,6 +72,16 @@ public class MRZScanTest extends BaseTest {
         testMRZResponse("documents/mrz/mrz13.jpeg");
     }
 
+    @Test
+    public void testMRZ14() {
+        testMRZResponse("documents/mrz/mrz14.jpeg");
+    }
+
+    @Test
+    public void testMRZ15() {
+        testMRZResponse("documents/mrz/mrz15.jpeg");
+    }
+
     private void testMRZResponse(String resourceName) {
         try {
             DataObject response = api.scanMRZ(getImageFromResource(resourceName));

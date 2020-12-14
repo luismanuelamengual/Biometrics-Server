@@ -9,7 +9,9 @@ import java.awt.image.BufferedImage;
 import java.util.*;
 
 import static org.neogroup.warp.Warp.getLogger;
+import static org.opencv.core.Core.ROTATE_180;
 import static org.opencv.core.CvType.CV_32F;
+import static org.opencv.core.CvType.CV_64F;
 
 public class MRZUtils {
 
@@ -57,6 +59,10 @@ public class MRZUtils {
             Mat mrzMat = detectMrz(OpenCVUtils.getImage(imageBytes));
             if (mrzMat != null) {
                 mrzCode = readCode(OpenCVUtils.getBufferedImage(mrzMat));
+                if (mrzCode == null) {
+                    Core.rotate(mrzMat, mrzMat, ROTATE_180);
+                    mrzCode = readCode(OpenCVUtils.getBufferedImage(mrzMat));
+                }
             }
         }
         return mrzCode;
@@ -349,24 +355,31 @@ public class MRZUtils {
         MatOfPoint2f contour2f = new MatOfPoint2f(contour.toArray());
         RotatedRect rotatedRect = Imgproc.minAreaRect(contour2f);
         Mat mrzMat = null;
-        if (rotatedRect.size.width > (rotatedRect.size.height * 3.8)) {
-            if (Math.abs(rotatedRect.angle) > 3) {
-                Mat rotatedMatrix2D = Imgproc.getRotationMatrix2D(rotatedRect.center, rotatedRect.angle, 1.0);
-                Mat rotatedImg = new Mat();
-                Imgproc.warpAffine(resizedImg, rotatedImg, rotatedMatrix2D, resizedImg.size(), Imgproc.INTER_CUBIC, Core.BORDER_REPLICATE);
-                Rect rect = new Rect((int)rotatedRect.center.x - ((int)rotatedRect.size.width / 2), (int)rotatedRect.center.y - ((int)rotatedRect.size.height / 2), (int)rotatedRect.size.width, (int)rotatedRect.size.height);
-                mrzMat = rotatedImg.submat(rect);
-            } else {
-                Rect rect = Imgproc.boundingRect(contour);
-                mrzMat = resizedImg.submat(rect);
-            }
-        } else if (rotatedRect.size.height > (rotatedRect.size.width * 3.8)) {
-            double rotationAngle = (rotatedRect.angle < 0 ? 90 : -90) + rotatedRect.angle;
-            Mat rotatedMatrix2D = Imgproc.getRotationMatrix2D(rotatedRect.center, rotationAngle, 1.0);
-            Mat rotatedImg = new Mat();
-            Imgproc.warpAffine(resizedImg, rotatedImg, rotatedMatrix2D, resizedImg.size(), Imgproc.INTER_CUBIC, Core.BORDER_REPLICATE);
-            Rect rect = new Rect((int)rotatedRect.center.x - ((int)rotatedRect.size.height / 2), (int)rotatedRect.center.y - ((int)rotatedRect.size.width / 2), (int)rotatedRect.size.height, (int)rotatedRect.size.width);
-            mrzMat = rotatedImg.submat(rect);
+
+        double rectAspectRatioWidth = rotatedRect.size.width / rotatedRect.size.height;
+        double rectAspectRatioHeight = rotatedRect.size.height / rotatedRect.size.width;
+        double aspectRatio = Math.max(rectAspectRatioWidth, rectAspectRatioHeight);
+        if (aspectRatio > 3) {
+            Size originalImageSize = resizedImg.size();
+            Size resizedImageSize = newSize;
+            double xMultiplier = originalImageSize.width / resizedImageSize.width;
+            double yMultiplier = originalImageSize.height / resizedImageSize.height;
+            double rectWidth = Math.max(rotatedRect.size.width, rotatedRect.size.height) * xMultiplier;
+            double rectHeight = Math.min(rotatedRect.size.width, rotatedRect.size.height) * yMultiplier;
+            Size holderSize = new Size(rectWidth, rectWidth);
+
+            Mat transformedImg = new Mat();
+            Mat translationMatrix2D = new Mat(2, 3, CV_64F);
+            translationMatrix2D.put(0, 0, 1);
+            translationMatrix2D.put(0, 1, 0);
+            translationMatrix2D.put(0, 2, (holderSize.width / 2) - rotatedRect.center.x * xMultiplier);
+            translationMatrix2D.put(1, 0, 0);
+            translationMatrix2D.put(1, 1, 1);
+            translationMatrix2D.put(1, 2, (holderSize.height / 2) - rotatedRect.center.y * yMultiplier);
+            Imgproc.warpAffine(resizedImg, transformedImg, translationMatrix2D, holderSize, Imgproc.INTER_LINEAR, Core.BORDER_CONSTANT);
+            Mat rotatedMatrix2D = Imgproc.getRotationMatrix2D(new Point(holderSize.width/2, holderSize.height/2), rotatedRect.size.width > rotatedRect.size.height ? /*180 + */rotatedRect.angle : 90 + rotatedRect.angle, 1.0);
+            Imgproc.warpAffine(transformedImg, transformedImg, rotatedMatrix2D, holderSize, Imgproc.INTER_CUBIC, Core.BORDER_CONSTANT);
+            mrzMat = transformedImg.submat(new Rect(0,(int)((holderSize.height / 2) - (rectHeight / 2)), (int)rectWidth, (int)rectHeight));
         }
 
         if (mrzMat != null && !mrzMat.empty()) {
