@@ -43,6 +43,31 @@ public class BarcodeScanTest extends BaseTest {
         testBarcodeResponse("documents/barcode/barcode7.jpeg");
     }
 
+    @Test
+    public void testBarcode8() throws Exception {
+        testBarcodeResponse("documents/barcode/barcode8.jpeg");
+    }
+
+    @Test
+    public void testBarcode9() throws Exception {
+        testBarcodeResponse("documents/barcode/barcode9.jpeg");
+    }
+
+    @Test
+    public void testBarcode10() throws Exception {
+        testBarcodeResponse("documents/barcode/barcode10.jpeg");
+    }
+
+    @Test
+    public void testBarcode11() throws Exception {
+        testBarcodeResponse("documents/barcode/barcode11.jpeg");
+    }
+
+    @Test
+    public void testBarcode12() throws Exception {
+        testBarcodeResponse("documents/barcode/barcode12.jpeg");
+    }
+
     private void testBarcodeResponse(String resourceName) throws Exception {
         try {
             DataObject response = api.scanBarcode(getImageFromResource(resourceName));
