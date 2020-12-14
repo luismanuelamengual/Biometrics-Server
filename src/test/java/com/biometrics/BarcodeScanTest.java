@@ -68,12 +68,22 @@ public class BarcodeScanTest extends BaseTest {
         testBarcodeResponse("documents/barcode/barcode12.jpeg");
     }
 
-    private void testBarcodeResponse(String resourceName) throws Exception {
+    @Test
+    public void testBarcode13() throws Exception {
+        testBarcodeResponse("documents/barcode/barcode13.jpeg");
+    }
+
+    @Test
+    public void testBarcode14() throws Exception {
+        testBarcodeResponse("documents/barcode/barcode14.jpeg");
+    }
+
+    private void testBarcodeResponse(String resourceName) {
         try {
             DataObject response = api.scanBarcode(getImageFromResource(resourceName));
             assertTrue(response.has("raw"), "Barcode \"raw\" field was not found on file \"" + resourceName + "\" !!");
             assertTrue(response.has("information"), "Barcode \"information\" field was not found on file \"" + resourceName + "\" !!");
-        } catch (ResponseException exception) {
+        } catch (Exception exception) {
             fail("Barcode data was not found on \"" + resourceName + "\" !!");
         }
     }
