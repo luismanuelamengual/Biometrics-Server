@@ -21,9 +21,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import static org.opencv.core.CvType.CV_32F;
-import static org.opencv.core.CvType.CV_64F;
-
 @ControllerComponent("v1")
 public class ApiController {
 
@@ -224,9 +221,9 @@ public class ApiController {
     public DataObject scanDocument(@Parameter("documentFront") byte[] documentFront, @Parameter("documentBack") byte[] documentBack) {
 
         DataObject response = null;
-        String pdf417RawText = getPDF417CodeFromImage(documentFront);
+        String pdf417RawText = PDF417Utils.readCode(documentFront);
         if (pdf417RawText == null) {
-            pdf417RawText = getPDF417CodeFromImage(documentBack);
+            pdf417RawText = PDF417Utils.readCode(documentBack);
         }
 
         if (pdf417RawText != null) {
@@ -237,9 +234,9 @@ public class ApiController {
         }
 
         if (response == null) {
-            String mrzRawText = getMRZCodeFromImage(documentBack);
+            String mrzRawText = MRZUtils.readCode(documentBack);
             if (mrzRawText == null) {
-                mrzRawText = getMRZCodeFromImage(documentFront);
+                mrzRawText = MRZUtils.readCode(documentFront);
             }
 
             if (mrzRawText != null) {
@@ -259,7 +256,7 @@ public class ApiController {
     @Post("scan_barcode_data")
     public DataObject scanBarcode (@Body byte[] imageBytes) {
         DataObject response = null;
-        String pdf417RawText = getPDF417CodeFromImage(imageBytes);
+        String pdf417RawText = PDF417Utils.readCode(imageBytes);
         if (pdf417RawText != null) {
             Map<String, Object> documentInformation = PDF417Utils.parseCode(pdf417RawText);
             if (documentInformation != null && !documentInformation.isEmpty()){
@@ -275,7 +272,7 @@ public class ApiController {
     @Post("scan_mrz_data")
     public DataObject scanMRZ (@Body byte[] imageBytes) {
         DataObject response = null;
-        String mrzRawText = getMRZCodeFromImage(imageBytes);
+        String mrzRawText = MRZUtils.readCode(imageBytes);
         if (mrzRawText != null) {
             Map<String, Object> documentInformation = MRZUtils.parseCode(mrzRawText);
             if (documentInformation != null && !documentInformation.isEmpty()){
@@ -286,157 +283,5 @@ public class ApiController {
             throw new ResponseException("MRZ data could not be read");
         }
         return response;
-    }
-
-    private String getMRZCodeFromImage (byte[] imageBytes) {
-        String mrzCode = null;
-        if (imageBytes.length > 0) {
-            Mat mrzMat = detectMrz(OpenCVUtils.getImage(imageBytes));
-            if (mrzMat != null) {
-                mrzCode = MRZUtils.readCode(OpenCVUtils.getBufferedImage(mrzMat));
-            }
-        }
-        return mrzCode;
-    }
-
-    private String getPDF417CodeFromImage(byte[] imageBytes) {
-        String pdf417Code = null;
-        if (imageBytes.length > 0) {
-            Mat image = OpenCVUtils.getImage(imageBytes);
-            List<Mat> barcodeImages = detectPDF417(image);
-            for (Mat barcodeImage : barcodeImages) {
-                pdf417Code = PDF417Utils.readCode(OpenCVUtils.getBufferedImage(barcodeImage));
-                if (pdf417Code != null) {
-                    break;
-                }
-            }
-        }
-        return pdf417Code;
-    }
-
-    private List<Mat> detectPDF417(Mat src){
-        List<Mat> barcodeImageCandidates = new ArrayList<>();
-        Mat grayScaleImage = OpenCVUtils.grayScale(src);
-        Mat resizedImage = OpenCVUtils.resize(grayScaleImage, 800, 800, 0, 0);
-        Mat image = resizedImage.clone();
-        Imgproc.GaussianBlur(image, image, new Size(13, 13), 0);
-        Imgproc.threshold(image, image, 90, 255, Imgproc.THRESH_BINARY_INV);
-        Imgproc.dilate(image, image, new Mat(), new Point(-1, -1), 14);
-        Imgproc.erode(image, image, new Mat(), new Point(-1, -1), 9);
-        List<MatOfPoint> contours = new ArrayList<>();
-        List<RotatedRect> rotatedRects = new ArrayList<>();
-        Imgproc.findContours(image, contours, new Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
-        for (MatOfPoint contour : contours) {
-            MatOfPoint2f contour2f = new MatOfPoint2f(contour.toArray());
-            RotatedRect rect = Imgproc.minAreaRect(contour2f);
-            double rectAspectRatioWidth = rect.size.width / rect.size.height;
-            double rectAspectRatioHeight = rect.size.height / rect.size.width;
-            double aspectRatio = Math.max(rectAspectRatioWidth, rectAspectRatioHeight);
-            if (aspectRatio > 2.5 && aspectRatio <= 5) {
-                rotatedRects.add(rect);
-            }
-        }
-
-        if (!rotatedRects.isEmpty()) {
-            Mat transformedImg = new Mat();
-            Mat translationMatrix2D = new Mat(2, 3, CV_64F);
-            Size originalImageSize = src.size();
-            Size resizedImageSize = resizedImage.size();
-            double xMultiplier = originalImageSize.width / resizedImageSize.width;
-            double yMultiplier = originalImageSize.height / resizedImageSize.height;
-            for (RotatedRect rect : rotatedRects) {
-                double rectWidth = Math.max(rect.size.width, rect.size.height) * xMultiplier * 1.2;
-                double rectHeight = Math.min(rect.size.width, rect.size.height) * yMultiplier * 1.1;
-                Size holderSize = new Size(rectWidth, rectWidth);
-                translationMatrix2D.put(0, 0, 1);
-                translationMatrix2D.put(0, 1, 0);
-                translationMatrix2D.put(0, 2, (holderSize.width / 2) - rect.center.x * xMultiplier);
-                translationMatrix2D.put(1, 0, 0);
-                translationMatrix2D.put(1, 1, 1);
-                translationMatrix2D.put(1, 2, (holderSize.height / 2) - rect.center.y * yMultiplier);
-                Imgproc.warpAffine(src, transformedImg, translationMatrix2D, holderSize, Imgproc.INTER_LINEAR, Core.BORDER_CONSTANT);
-                Mat rotatedMatrix2D = Imgproc.getRotationMatrix2D(new Point(holderSize.width/2, holderSize.height/2), rect.size.width > rect.size.height ? 180 + rect.angle : 90 + rect.angle, 1.0);
-                Imgproc.warpAffine(transformedImg, transformedImg, rotatedMatrix2D, holderSize, Imgproc.INTER_CUBIC, Core.BORDER_CONSTANT);
-                barcodeImageCandidates.add(transformedImg.submat(new Rect(0,(int)((holderSize.height / 2) - (rectHeight / 2)), (int)rectWidth, (int)rectHeight)));
-            }
-        }
-        return barcodeImageCandidates;
-    }
-
-    private Mat detectMrz(Mat src){
-        Mat img = OpenCVUtils.grayScale(src);
-        double ratio = img.height() / 800.0;
-        int width = (int) (img.size().width / ratio);
-        int height = (int) (img.size().height / ratio);
-        Size newSize = new Size(width, height);
-        Mat resizedImg = new Mat(newSize, CvType.CV_8UC4);
-        Imgproc.resize(img, resizedImg, newSize);
-        Mat blur = new Mat();
-        Imgproc.medianBlur(resizedImg, blur, 3);
-        Mat morph = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(13, 5));
-        Mat dilatedImg = new Mat();
-        Imgproc.morphologyEx(blur, dilatedImg, Imgproc.MORPH_BLACKHAT, morph);
-        blur.release();
-        Mat gradX = new Mat();
-        Imgproc.Sobel(dilatedImg, gradX, CV_32F, 1, 0);
-        dilatedImg.release();
-        Core.convertScaleAbs(gradX, gradX, 1, 0);
-        Core.MinMaxLocResult minMax = Core.minMaxLoc(gradX);
-        Core.convertScaleAbs(gradX, gradX, (255/(minMax.maxVal - minMax.minVal)), - ((minMax.minVal * 255) / (minMax.maxVal - minMax.minVal)));
-        Imgproc.morphologyEx(gradX, gradX, Imgproc.MORPH_CLOSE, morph);
-        Mat thresh = new Mat();
-        Imgproc.threshold(gradX, thresh, 0, 255, Imgproc.THRESH_OTSU);
-        gradX.release();
-        morph.release();
-        morph = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(21, 21));
-        Imgproc.morphologyEx(thresh, thresh, Imgproc.MORPH_CLOSE, morph);
-        Imgproc.erode(thresh, thresh, new Mat(), new Point(-1, -1), 4);
-        morph.release();
-        int col = (int) resizedImg.size().width;
-        int p = (int) (resizedImg.size().width * 0.05);
-        int row = (int) resizedImg.size().height;
-        for(int i = 0; i < row; i++) {
-            for(int j = 0; j < p; j++) {
-                thresh.put(i, j, 0);
-                thresh.put(i, col-j, 0);
-            }
-        }
-        Mat dilated_edges = new Mat();
-        Imgproc.dilate(thresh, dilated_edges, new Mat(), new Point(-1, -1), 16, 1, new Scalar(0,255,0));
-        List<MatOfPoint> contours = new ArrayList<>();
-        Mat hierarchy = new Mat();
-        Imgproc.findContours(dilated_edges, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
-        hierarchy.release();
-        MatOfPoint contour = OpenCVUtils.getLargestContour(contours);
-
-        MatOfPoint2f contour2f = new MatOfPoint2f(contour.toArray());
-        RotatedRect rotatedRect = Imgproc.minAreaRect(contour2f);
-        Mat mrzMat = null;
-        if (rotatedRect.size.width > (rotatedRect.size.height * 3.8)) {
-            if (Math.abs(rotatedRect.angle) > 3) {
-                Mat rotatedMatrix2D = Imgproc.getRotationMatrix2D(rotatedRect.center, rotatedRect.angle, 1.0);
-                Mat rotatedImg = new Mat();
-                Imgproc.warpAffine(resizedImg, rotatedImg, rotatedMatrix2D, resizedImg.size(), Imgproc.INTER_CUBIC, Core.BORDER_REPLICATE);
-                Rect rect = new Rect((int)rotatedRect.center.x - ((int)rotatedRect.size.width / 2), (int)rotatedRect.center.y - ((int)rotatedRect.size.height / 2), (int)rotatedRect.size.width, (int)rotatedRect.size.height);
-                mrzMat = rotatedImg.submat(rect);
-            } else {
-                Rect rect = Imgproc.boundingRect(contour);
-                mrzMat = resizedImg.submat(rect);
-            }
-        } else if (rotatedRect.size.height > (rotatedRect.size.width * 3.8)) {
-            double rotationAngle = (rotatedRect.angle < 0 ? 90 : -90) + rotatedRect.angle;
-            Mat rotatedMatrix2D = Imgproc.getRotationMatrix2D(rotatedRect.center, rotationAngle, 1.0);
-            Mat rotatedImg = new Mat();
-            Imgproc.warpAffine(resizedImg, rotatedImg, rotatedMatrix2D, resizedImg.size(), Imgproc.INTER_CUBIC, Core.BORDER_REPLICATE);
-            Rect rect = new Rect((int)rotatedRect.center.x - ((int)rotatedRect.size.height / 2), (int)rotatedRect.center.y - ((int)rotatedRect.size.width / 2), (int)rotatedRect.size.height, (int)rotatedRect.size.width);
-            mrzMat = rotatedImg.submat(rect);
-        }
-
-        if (mrzMat != null && !mrzMat.empty()) {
-            Imgproc.adaptiveThreshold(mrzMat, mrzMat, 255, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY, 17, 5);
-            Imgproc.erode(mrzMat, mrzMat, new Mat(), new Point(-1, -1), 1);
-            Imgproc.dilate(mrzMat, mrzMat, new Mat(), new Point(-1, -1), 1);
-        }
-        return mrzMat;
     }
 }

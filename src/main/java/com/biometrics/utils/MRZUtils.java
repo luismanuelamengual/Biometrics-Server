@@ -2,11 +2,14 @@ package com.biometrics.utils;
 
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.util.LoadLibs;
+import org.opencv.core.*;
+import org.opencv.imgproc.Imgproc;
 
 import java.awt.image.BufferedImage;
 import java.util.*;
 
 import static org.neogroup.warp.Warp.getLogger;
+import static org.opencv.core.CvType.CV_32F;
 
 public class MRZUtils {
 
@@ -48,7 +51,48 @@ public class MRZUtils {
         tesseract.setTessVariable("tessedit_char_whitelist", "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<");
     }
 
-    public static String readCode(BufferedImage image) {
+    public static String readCode (byte[] imageBytes) {
+        String mrzCode = null;
+        if (imageBytes.length > 0) {
+            Mat mrzMat = detectMrz(OpenCVUtils.getImage(imageBytes));
+            if (mrzMat != null) {
+                mrzCode = readCode(OpenCVUtils.getBufferedImage(mrzMat));
+            }
+        }
+        return mrzCode;
+    }
+
+    public static Map<String, Object> parseCode(String mrzCode) {
+        Map<String, Object> documentData = null;
+        try {
+            if (mrzCode.startsWith(ID_ARG_PREFIX)) {
+                String section1 = mrzCode.substring(0, 30);
+                String section2 = mrzCode.substring(30, 60);
+                String section3 = mrzCode.substring(60);
+                String documentField = section1.substring(5, section1.indexOf("<"));
+                String birthDateField = section2.substring(0, 6);
+                String genderField = section2.substring(7, 8);
+                String expirationDateField = section2.substring(8, 14);
+                String[] name = section3.split(FILLER_SEPARATOR);
+                String lastNameField = name[0].replace(FILLER, SPACE);
+                String firstNameField = name[1].replace(FILLER, SPACE);
+                documentData = new HashMap<>();
+                documentData.put(Document.DOCUMENT_NUMBER_FIELD, formatDocumentNumber(documentField));
+                documentData.put(Document.BIRTH_DATE_FIELD, formatDate(birthDateField));
+                documentData.put(Document.EXPIRATION_DATE_FIELD, formatDate(expirationDateField, true));
+                documentData.put(Document.GENDER_PROPERTY_FIELD, genderField);
+                documentData.put(Document.FIRST_NAME_FIELD, formatName(firstNameField));
+                documentData.put(Document.LAST_NAME_FIELD, formatName(lastNameField));
+            } else {
+                throw new RuntimeException("Unrecognized mrz code type");
+            }
+        } catch (Exception ex) {
+            getLogger().warning("MRZ code \"" + mrzCode + "\" could not be parsed: " + ex.getMessage());
+        }
+        return documentData;
+    }
+
+    private static String readCode(BufferedImage image) {
         String mrzCode = null;
         String mrzCodeText = null;
         try {
@@ -155,36 +199,6 @@ public class MRZUtils {
         return mrzCode;
     }
 
-    public static Map<String, Object> parseCode(String mrzCode) {
-        Map<String, Object> documentData = null;
-        try {
-            if (mrzCode.startsWith(ID_ARG_PREFIX)) {
-                String section1 = mrzCode.substring(0, 30);
-                String section2 = mrzCode.substring(30, 60);
-                String section3 = mrzCode.substring(60);
-                String documentField = section1.substring(5, section1.indexOf("<"));
-                String birthDateField = section2.substring(0, 6);
-                String genderField = section2.substring(7, 8);
-                String expirationDateField = section2.substring(8, 14);
-                String[] name = section3.split(FILLER_SEPARATOR);
-                String lastNameField = name[0].replace(FILLER, SPACE);
-                String firstNameField = name[1].replace(FILLER, SPACE);
-                documentData = new HashMap<>();
-                documentData.put(Document.DOCUMENT_NUMBER_FIELD, formatDocumentNumber(documentField));
-                documentData.put(Document.BIRTH_DATE_FIELD, formatDate(birthDateField));
-                documentData.put(Document.EXPIRATION_DATE_FIELD, formatDate(expirationDateField, true));
-                documentData.put(Document.GENDER_PROPERTY_FIELD, genderField);
-                documentData.put(Document.FIRST_NAME_FIELD, formatName(firstNameField));
-                documentData.put(Document.LAST_NAME_FIELD, formatName(lastNameField));
-            } else {
-                throw new RuntimeException("Unrecognized mrz code type");
-            }
-        } catch (Exception ex) {
-            getLogger().warning("MRZ code \"" + mrzCode + "\" could not be parsed: " + ex.getMessage());
-        }
-        return documentData;
-    }
-
     private static char readLetter(char character) {
         if (!Character.isLetter(character)) {
             switch (character) {
@@ -284,5 +298,82 @@ public class MRZUtils {
         Calendar calendar = new GregorianCalendar(year, month, dayOfMonth);
         calendar.setTimeZone(GMT_TIME_ZONE);
         return calendar.getTimeInMillis();
+    }
+
+    private static Mat detectMrz(Mat src){
+        Mat img = OpenCVUtils.grayScale(src);
+        double ratio = img.height() / 800.0;
+        int width = (int) (img.size().width / ratio);
+        int height = (int) (img.size().height / ratio);
+        Size newSize = new Size(width, height);
+        Mat resizedImg = new Mat(newSize, CvType.CV_8UC4);
+        Imgproc.resize(img, resizedImg, newSize);
+        Mat blur = new Mat();
+        Imgproc.medianBlur(resizedImg, blur, 3);
+        Mat morph = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(13, 5));
+        Mat dilatedImg = new Mat();
+        Imgproc.morphologyEx(blur, dilatedImg, Imgproc.MORPH_BLACKHAT, morph);
+        blur.release();
+        Mat gradX = new Mat();
+        Imgproc.Sobel(dilatedImg, gradX, CV_32F, 1, 0);
+        dilatedImg.release();
+        Core.convertScaleAbs(gradX, gradX, 1, 0);
+        Core.MinMaxLocResult minMax = Core.minMaxLoc(gradX);
+        Core.convertScaleAbs(gradX, gradX, (255/(minMax.maxVal - minMax.minVal)), - ((minMax.minVal * 255) / (minMax.maxVal - minMax.minVal)));
+        Imgproc.morphologyEx(gradX, gradX, Imgproc.MORPH_CLOSE, morph);
+        Mat thresh = new Mat();
+        Imgproc.threshold(gradX, thresh, 0, 255, Imgproc.THRESH_OTSU);
+        gradX.release();
+        morph.release();
+        morph = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(21, 21));
+        Imgproc.morphologyEx(thresh, thresh, Imgproc.MORPH_CLOSE, morph);
+        Imgproc.erode(thresh, thresh, new Mat(), new Point(-1, -1), 4);
+        morph.release();
+        int col = (int) resizedImg.size().width;
+        int p = (int) (resizedImg.size().width * 0.05);
+        int row = (int) resizedImg.size().height;
+        for(int i = 0; i < row; i++) {
+            for(int j = 0; j < p; j++) {
+                thresh.put(i, j, 0);
+                thresh.put(i, col-j, 0);
+            }
+        }
+        Mat dilated_edges = new Mat();
+        Imgproc.dilate(thresh, dilated_edges, new Mat(), new Point(-1, -1), 16, 1, new Scalar(0,255,0));
+        List<MatOfPoint> contours = new ArrayList<>();
+        Mat hierarchy = new Mat();
+        Imgproc.findContours(dilated_edges, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+        hierarchy.release();
+        MatOfPoint contour = OpenCVUtils.getLargestContour(contours);
+
+        MatOfPoint2f contour2f = new MatOfPoint2f(contour.toArray());
+        RotatedRect rotatedRect = Imgproc.minAreaRect(contour2f);
+        Mat mrzMat = null;
+        if (rotatedRect.size.width > (rotatedRect.size.height * 3.8)) {
+            if (Math.abs(rotatedRect.angle) > 3) {
+                Mat rotatedMatrix2D = Imgproc.getRotationMatrix2D(rotatedRect.center, rotatedRect.angle, 1.0);
+                Mat rotatedImg = new Mat();
+                Imgproc.warpAffine(resizedImg, rotatedImg, rotatedMatrix2D, resizedImg.size(), Imgproc.INTER_CUBIC, Core.BORDER_REPLICATE);
+                Rect rect = new Rect((int)rotatedRect.center.x - ((int)rotatedRect.size.width / 2), (int)rotatedRect.center.y - ((int)rotatedRect.size.height / 2), (int)rotatedRect.size.width, (int)rotatedRect.size.height);
+                mrzMat = rotatedImg.submat(rect);
+            } else {
+                Rect rect = Imgproc.boundingRect(contour);
+                mrzMat = resizedImg.submat(rect);
+            }
+        } else if (rotatedRect.size.height > (rotatedRect.size.width * 3.8)) {
+            double rotationAngle = (rotatedRect.angle < 0 ? 90 : -90) + rotatedRect.angle;
+            Mat rotatedMatrix2D = Imgproc.getRotationMatrix2D(rotatedRect.center, rotationAngle, 1.0);
+            Mat rotatedImg = new Mat();
+            Imgproc.warpAffine(resizedImg, rotatedImg, rotatedMatrix2D, resizedImg.size(), Imgproc.INTER_CUBIC, Core.BORDER_REPLICATE);
+            Rect rect = new Rect((int)rotatedRect.center.x - ((int)rotatedRect.size.height / 2), (int)rotatedRect.center.y - ((int)rotatedRect.size.width / 2), (int)rotatedRect.size.height, (int)rotatedRect.size.width);
+            mrzMat = rotatedImg.submat(rect);
+        }
+
+        if (mrzMat != null && !mrzMat.empty()) {
+            Imgproc.adaptiveThreshold(mrzMat, mrzMat, 255, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY, 17, 5);
+            Imgproc.erode(mrzMat, mrzMat, new Mat(), new Point(-1, -1), 1);
+            Imgproc.dilate(mrzMat, mrzMat, new Mat(), new Point(-1, -1), 1);
+        }
+        return mrzMat;
     }
 }
