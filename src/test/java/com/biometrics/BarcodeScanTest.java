@@ -9,73 +9,93 @@ import static org.junit.jupiter.api.Assertions.fail;
 public class BarcodeScanTest extends BaseTest {
 
     @Test
-    public void testBarcode1() throws Exception {
+    public void testBarcode1() {
         testBarcodeResponse("documents/barcode/barcode1.jpeg");
     }
 
     @Test
-    public void testBarcode2() throws Exception {
+    public void testBarcode2() {
         testBarcodeResponse("documents/barcode/barcode2.jpeg");
     }
 
     @Test
-    public void testBarcode3() throws Exception {
+    public void testBarcode3() {
         testBarcodeResponse("documents/barcode/barcode3.jpeg");
     }
 
     @Test
-    public void testBarcode4() throws Exception {
+    public void testBarcode4() {
         testBarcodeResponse("documents/barcode/barcode4.jpeg");
     }
 
     @Test
-    public void testBarcode5() throws Exception {
+    public void testBarcode5() {
         testBarcodeResponse("documents/barcode/barcode5.jpeg");
     }
 
     @Test
-    public void testBarcode6() throws Exception {
+    public void testBarcode6() {
         testBarcodeResponse("documents/barcode/barcode6.jpeg");
     }
 
     @Test
-    public void testBarcode7() throws Exception {
+    public void testBarcode7() {
         testBarcodeResponse("documents/barcode/barcode7.jpeg");
     }
 
     @Test
-    public void testBarcode8() throws Exception {
+    public void testBarcode8() {
         testBarcodeResponse("documents/barcode/barcode8.jpeg");
     }
 
     @Test
-    public void testBarcode9() throws Exception {
+    public void testBarcode9() {
         testBarcodeResponse("documents/barcode/barcode9.jpeg");
     }
 
     @Test
-    public void testBarcode10() throws Exception {
+    public void testBarcode10() {
         testBarcodeResponse("documents/barcode/barcode10.jpeg");
     }
 
     @Test
-    public void testBarcode11() throws Exception {
+    public void testBarcode11() {
         testBarcodeResponse("documents/barcode/barcode11.jpeg");
     }
 
     @Test
-    public void testBarcode12() throws Exception {
+    public void testBarcode12() {
         testBarcodeResponse("documents/barcode/barcode12.jpeg");
     }
 
     @Test
-    public void testBarcode13() throws Exception {
+    public void testBarcode13() {
         testBarcodeResponse("documents/barcode/barcode13.jpeg");
     }
 
     @Test
-    public void testBarcode14() throws Exception {
+    public void testBarcode14() {
         testBarcodeResponse("documents/barcode/barcode14.jpeg");
+    }
+
+    @Test
+    public void testBarcode15() {
+        testBarcodeResponse("documents/barcode/barcode15.jpeg");
+    }
+
+    @Test
+    public void testBarcode16() {
+        testBarcodeResponse("documents/barcode/barcode16.jpeg");
+    }
+
+    @Test
+    public void testBarcode17() {
+        testBarcodeResponse("documents/barcode/barcode17.jpeg");
+    }
+
+    @Test
+    public void testBarcode18() {
+        testBarcodeResponse("documents/barcode/barcode18.jpeg");
     }
 
     private void testBarcodeResponse(String resourceName) {
