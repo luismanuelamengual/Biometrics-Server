@@ -27,6 +27,7 @@ public class MRZUtils {
     private static final char ZERO = '0';
     private static final char ONE = '1';
     private static final char FOUR = '4';
+    private static final char FIVE = '5';
     private static final char SIX = '6';
     private static final char SEVEN = '7';
     private static final char EIGHT = '8';
@@ -39,6 +40,7 @@ public class MRZUtils {
     private static final char I = 'I';
     private static final char G = 'G';
     private static final char T = 'T';
+    private static final char S = 'S';
     private static final char Z = 'Z';
 
     private static final Tesseract tesseract;
@@ -199,7 +201,7 @@ public class MRZUtils {
             }
         } catch (Exception ex) {
             if (mrzCodeText != null) {
-                getLogger().warning("MRZ code \"" + mrzCodeText + "\" could not be processed: " + ex.getMessage());
+                getLogger().warning("MRZ code \"" + mrzCodeText.replaceAll("\n","" ) + "\" could not be processed: " + ex.getMessage());
             }
         }
         return mrzCode;
@@ -211,6 +213,7 @@ public class MRZUtils {
                 case ZERO: character = O; break;
                 case ONE: character = I; break;
                 case FOUR: character = A; break;
+                case FIVE: character = S; break;
                 case SIX: character = G; break;
                 case SEVEN: character = T; break;
                 case EIGHT: character = B; break;
@@ -227,6 +230,7 @@ public class MRZUtils {
                 case D: character = ZERO; break;
                 case O: character = ZERO; break;
                 case A: character = FOUR; break;
+                case S: character = FIVE; break;
                 case B: character = EIGHT; break;
                 case I: character = ONE; break;
                 case G: character = SIX; break;
