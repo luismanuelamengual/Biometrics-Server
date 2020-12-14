@@ -72,7 +72,7 @@ public class MRZScanTest extends BaseTest {
         testMRZResponse("documents/mrz/mrz13.jpeg");
     }
 
-    public void testMRZResponse(String resourceName) throws Exception {
+    private void testMRZResponse(String resourceName) throws Exception {
         try {
             DataObject response = api.scanMRZ(getImageFromResource(resourceName));
             assertTrue(response.has("raw"), "MRZ \"raw\" field was not found on file \"" + resourceName + "\" !!");
