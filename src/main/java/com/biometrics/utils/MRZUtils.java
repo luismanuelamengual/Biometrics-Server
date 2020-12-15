@@ -26,6 +26,7 @@ public class MRZUtils {
     private static final char SPACE = ' ';
     private static final char ZERO = '0';
     private static final char ONE = '1';
+    private static final char TWO = '2';
     private static final char FOUR = '4';
     private static final char FIVE = '5';
     private static final char SIX = '6';
@@ -217,6 +218,7 @@ public class MRZUtils {
             switch (character) {
                 case ZERO: character = O; break;
                 case ONE: character = I; break;
+                case TWO: character = Z; break;
                 case FOUR: character = A; break;
                 case FIVE: character = S; break;
                 case SIX: character = G; break;
@@ -238,6 +240,7 @@ public class MRZUtils {
                 case S: character = FIVE; break;
                 case B: character = EIGHT; break;
                 case I: character = ONE; break;
+                case Z: character = TWO; break;
                 case G: character = SIX; break;
                 case T: character = SEVEN; break;
                 default: throw new RuntimeException("Unexpected character \"" + character + "\"");
