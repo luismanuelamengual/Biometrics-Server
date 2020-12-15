@@ -1,4 +1,4 @@
-FROM adoptopenjdk/openjdk13:ubuntu
+FROM adoptopenjdk/openjdk15:ubuntu-jre
 ARG JAR_FILE
 ARG AWS_ACCESS_KEY_ID
 ARG AWS_ACCESS_KEY
