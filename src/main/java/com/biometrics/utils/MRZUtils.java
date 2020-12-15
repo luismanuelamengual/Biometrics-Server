@@ -157,7 +157,7 @@ public class MRZUtils {
                     for (int i = mrzCodeBuilder.length(); i < 59; i++) {
                         mrzCodeBuilder.append('<');
                     }
-                    char mrzChecksum = readDigit(currentLine.charAt(currentLine.length() - 1));
+                    char mrzChecksum = currentLine.charAt(currentLine.length() - 1);
                     mrzCodeBuilder.append(mrzChecksum);
 
                     //Linea 3
@@ -189,10 +189,15 @@ public class MRZUtils {
                     if (expirationDateCheckSum != expirationDateCalculatedCheckSum) {
                         throw new RuntimeException("Failed expiration date checksum");
                     }
+
                     String mrzField = documentField + '<' + documentCheckSum + birthDateField + birthDateCheckSum + expirationDateField + expirationDateCheckSum;
                     char mrzCalculatedChecksum = calculateMRZChecksumDigitChar(mrzField);
-                    if (mrzChecksum != mrzCalculatedChecksum) {
-                        throw new RuntimeException("Failed mrz checksum");
+                    if (Character.isDigit(mrzChecksum)) {
+                        if (mrzChecksum != mrzCalculatedChecksum) {
+                            throw new RuntimeException("Failed mrz checksum");
+                        }
+                    } else {
+                        mrzCodeBuilder.setCharAt(59, mrzCalculatedChecksum);
                     }
                     mrzCode = mrzCodeBuilder.toString();
                 } else {
@@ -235,7 +240,6 @@ public class MRZUtils {
                 case I: character = ONE; break;
                 case G: character = SIX; break;
                 case T: character = SEVEN; break;
-                case FILLER: character = SIX; break;
                 default: throw new RuntimeException("Unexpected character \"" + character + "\"");
             }
         }
