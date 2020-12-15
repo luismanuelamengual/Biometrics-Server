@@ -20,7 +20,7 @@ public class MRZUtils {
     private static final String RETURN = "\n";
     private static final String ID_PREFIX = "ID";
     private static final String ID_ARG_PREFIX = "IDARG";
-    private static final String[] ID_FAIL_PREFIXES = {"1ID", "1D"};
+    private static final String[] ID_FAIL_PREFIXES = {"1ID", "1D", "IO"};
     private static final String FILLER_SEPARATOR = "<<";
     private static final char FILLER = '<';
     private static final char SPACE = ' ';
