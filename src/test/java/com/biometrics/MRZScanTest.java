@@ -92,6 +92,31 @@ public class MRZScanTest extends BaseTest {
         testMRZResponse("documents/mrz/mrz17.jpeg");
     }
 
+    @Test
+    public void testMRZ18() {
+        testMRZResponse("documents/mrz/mrz18.jpeg");
+    }
+
+    @Test
+    public void testMRZ19() {
+        testMRZResponse("documents/mrz/mrz19.jpeg");
+    }
+
+    @Test
+    public void testMRZ20() {
+        testMRZResponse("documents/mrz/mrz20.jpeg");
+    }
+
+    @Test
+    public void testMRZ21() {
+        testMRZResponse("documents/mrz/mrz21.jpeg");
+    }
+
+    @Test
+    public void testMRZ22() {
+        testMRZResponse("documents/mrz/mrz22.jpeg");
+    }
+
     private void testMRZResponse(String resourceName) {
         try {
             DataObject response = api.scanMRZ(getImageFromResource(resourceName));
