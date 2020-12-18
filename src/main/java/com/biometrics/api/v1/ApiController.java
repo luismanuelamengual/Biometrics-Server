@@ -29,7 +29,8 @@ public class ApiController {
     private static final int FACE_NOT_CENTERED_STATUS_CODE = -1;
     private static final int FACE_TOO_CLOSE_STATUS_CODE = -2;
     private static final int FACE_TOO_FAR_AWAY_STATUS_CODE = -3;
-    private static final int FACE_NOT_FOUND_STATUS_CODE = -4;
+    private static final int FACE_TOO_BLURRY_CODE = -4;
+    private static final int FACE_NOT_FOUND_STATUS_CODE = -99;
 
     private static final String MRZ_TYPE = "MRZ";
     private static final String PDF417_TYPE = "PDF417";
@@ -135,18 +136,18 @@ public class ApiController {
                 } else if (ratio > maxFaceZoomRatio) {
                     status = FACE_TOO_CLOSE_STATUS_CODE;
                 } else {
-                    switch (instruction) {
-                        case FRONTAL_FACE_INSTRUCTION:
-                        case LEFT_PROFILE_FACE_INSTRUCTION:
-                        case RIGHT_PROFILE_FACE_INSTRUCTION:
-                            if (instruction.equals(faceInstruction)) {
-                                status = FACE_MATCH_STATUS_CODE;
-                            } else {
-                                status = FACE_FOUND_STATUS_CODE;
-                            }
-                            break;
-                        default:
+                    Mat face = image.submat(faceRect);
+                    int faceSize = 250;
+                    face = OpenCVUtils.resize(face, faceSize, faceSize, faceSize, faceSize);
+                    double faceBlurriness = OpenCVUtils.getBlurriness(face);
+                    if (faceBlurriness < 10) {
+                        status = FACE_TOO_BLURRY_CODE;
+                    } else {
+                        if (instruction.equals(faceInstruction)) {
+                            status = FACE_MATCH_STATUS_CODE;
+                        } else {
                             status = FACE_FOUND_STATUS_CODE;
+                        }
                     }
                 }
             }
