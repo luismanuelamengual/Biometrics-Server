@@ -38,7 +38,7 @@ public class PDF417Utils {
         String pdf417Code = null;
         if (imageBytes.length > 0) {
             Mat image = OpenCVUtils.getImage(imageBytes);
-            List<Mat> barcodeImages = detectPDF417(image);
+            List<Mat> barcodeImages = detectCode(image);
             for (Mat barcodeImage : barcodeImages) {
                 pdf417Code = readCode(OpenCVUtils.getBufferedImage(barcodeImage));
                 if (pdf417Code != null) {
@@ -127,11 +127,11 @@ public class PDF417Utils {
         return calendar.getTimeInMillis();
     }
 
-    private static List<Mat> detectPDF417(Mat src){
+    private static List<Mat> detectCode(Mat src){
         List<Mat> barcodeImageCandidates = new ArrayList<>();
-        Mat grayScaleImage = OpenCVUtils.grayScale(src);
-        Mat resizedImage = OpenCVUtils.resize(grayScaleImage, 800, 800, 0, 0);
-        Mat image = resizedImage.clone();
+        Mat image = new Mat();
+        OpenCVUtils.grayScale(src, image);
+        OpenCVUtils.resize(image, image,800, 800, 0, 0);
         Imgproc.GaussianBlur(image, image, new Size(13, 13), 0);
         Imgproc.threshold(image, image, 90, 255, Imgproc.THRESH_BINARY_INV);
         Imgproc.dilate(image, image, new Mat(), new Point(-1, -1), 14);
@@ -152,24 +152,16 @@ public class PDF417Utils {
 
         if (!rotatedRects.isEmpty()) {
             Mat transformedImg = new Mat();
-            Mat translationMatrix2D = new Mat(2, 3, CV_64F);
             Size originalImageSize = src.size();
-            Size resizedImageSize = resizedImage.size();
-            double xMultiplier = originalImageSize.width / resizedImageSize.width;
-            double yMultiplier = originalImageSize.height / resizedImageSize.height;
+            Size imageSize = image.size();
+            double xMultiplier = originalImageSize.width / imageSize.width;
+            double yMultiplier = originalImageSize.height / imageSize.height;
             for (RotatedRect rect : rotatedRects) {
                 double rectWidth = Math.max(rect.size.width, rect.size.height) * xMultiplier * 1.2;
                 double rectHeight = Math.min(rect.size.width, rect.size.height) * yMultiplier * 1.1;
                 Size holderSize = new Size(rectWidth, rectWidth);
-                translationMatrix2D.put(0, 0, 1);
-                translationMatrix2D.put(0, 1, 0);
-                translationMatrix2D.put(0, 2, (holderSize.width / 2) - rect.center.x * xMultiplier);
-                translationMatrix2D.put(1, 0, 0);
-                translationMatrix2D.put(1, 1, 1);
-                translationMatrix2D.put(1, 2, (holderSize.height / 2) - rect.center.y * yMultiplier);
-                Imgproc.warpAffine(src, transformedImg, translationMatrix2D, holderSize, Imgproc.INTER_LINEAR, Core.BORDER_CONSTANT);
-                Mat rotatedMatrix2D = Imgproc.getRotationMatrix2D(new Point(holderSize.width/2, holderSize.height/2), rect.size.width > rect.size.height ? 180 + rect.angle : 90 + rect.angle, 1.0);
-                Imgproc.warpAffine(transformedImg, transformedImg, rotatedMatrix2D, holderSize, Imgproc.INTER_CUBIC, Core.BORDER_CONSTANT);
+                OpenCVUtils.translate(src, transformedImg, (holderSize.width / 2) - rect.center.x * xMultiplier, (holderSize.height / 2) - rect.center.y * yMultiplier, holderSize);
+                OpenCVUtils.rotate(transformedImg, transformedImg, new Point(holderSize.width/2, holderSize.height/2), rect.size.width > rect.size.height ? 180 + rect.angle : 90 + rect.angle, holderSize);
                 barcodeImageCandidates.add(transformedImg.submat(new Rect(0,(int)((holderSize.height / 2) - (rectHeight / 2)), (int)rectWidth, (int)rectHeight)));
             }
         }

@@ -59,7 +59,7 @@ public class MRZUtils {
     public static String readCode (byte[] imageBytes) {
         String mrzCode = null;
         if (imageBytes.length > 0) {
-            Mat mrzMat = detectMrz(OpenCVUtils.getImage(imageBytes));
+            Mat mrzMat = detectCode(OpenCVUtils.getImage(imageBytes));
             if (mrzMat != null) {
                 mrzCode = readCode(OpenCVUtils.getBufferedImage(mrzMat));
                 if (mrzCode == null) {
@@ -317,8 +317,9 @@ public class MRZUtils {
         return calendar.getTimeInMillis();
     }
 
-    private static Mat detectMrz(Mat src){
-        Mat img = OpenCVUtils.grayScale(src);
+    private static Mat detectCode(Mat src){
+        Mat img = new Mat();
+        OpenCVUtils.grayScale(src, img);
         double ratio = img.height() / 800.0;
         int width = (int) (img.size().width / ratio);
         int height = (int) (img.size().height / ratio);
@@ -372,24 +373,14 @@ public class MRZUtils {
         double aspectRatio = Math.max(rectAspectRatioWidth, rectAspectRatioHeight);
         if (aspectRatio > 3) {
             Size originalImageSize = resizedImg.size();
-            Size resizedImageSize = newSize;
-            double xMultiplier = originalImageSize.width / resizedImageSize.width;
-            double yMultiplier = originalImageSize.height / resizedImageSize.height;
+            double xMultiplier = originalImageSize.width / newSize.width;
+            double yMultiplier = originalImageSize.height / newSize.height;
             double rectWidth = Math.max(rotatedRect.size.width, rotatedRect.size.height) * xMultiplier;
             double rectHeight = Math.min(rotatedRect.size.width, rotatedRect.size.height) * yMultiplier;
             Size holderSize = new Size(rectWidth, rectWidth);
-
             Mat transformedImg = new Mat();
-            Mat translationMatrix2D = new Mat(2, 3, CV_64F);
-            translationMatrix2D.put(0, 0, 1);
-            translationMatrix2D.put(0, 1, 0);
-            translationMatrix2D.put(0, 2, (holderSize.width / 2) - rotatedRect.center.x * xMultiplier);
-            translationMatrix2D.put(1, 0, 0);
-            translationMatrix2D.put(1, 1, 1);
-            translationMatrix2D.put(1, 2, (holderSize.height / 2) - rotatedRect.center.y * yMultiplier);
-            Imgproc.warpAffine(resizedImg, transformedImg, translationMatrix2D, holderSize, Imgproc.INTER_LINEAR, Core.BORDER_CONSTANT);
-            Mat rotatedMatrix2D = Imgproc.getRotationMatrix2D(new Point(holderSize.width/2, holderSize.height/2), rotatedRect.size.width > rotatedRect.size.height ? /*180 + */rotatedRect.angle : 90 + rotatedRect.angle, 1.0);
-            Imgproc.warpAffine(transformedImg, transformedImg, rotatedMatrix2D, holderSize, Imgproc.INTER_CUBIC, Core.BORDER_CONSTANT);
+            OpenCVUtils.translate(resizedImg, transformedImg, (holderSize.width / 2) - rotatedRect.center.x * xMultiplier, (holderSize.height / 2) - rotatedRect.center.y * yMultiplier, holderSize);
+            OpenCVUtils.rotate(transformedImg, transformedImg, new Point(holderSize.width/2, holderSize.height/2), rotatedRect.size.width > rotatedRect.size.height ? rotatedRect.angle : 90 + rotatedRect.angle, holderSize);
             mrzMat = transformedImg.submat(new Rect(0,(int)((holderSize.height / 2) - (rectHeight / 2)), (int)rectWidth, (int)rectHeight));
         }
 

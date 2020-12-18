@@ -138,7 +138,7 @@ public class ApiController {
                 } else {
                     Mat face = image.submat(faceRect);
                     int faceSize = 250;
-                    face = OpenCVUtils.resize(face, faceSize, faceSize, faceSize, faceSize);
+                    OpenCVUtils.resize(face, face, faceSize, faceSize, faceSize, faceSize);
                     double faceBlurriness = OpenCVUtils.getBlurriness(face);
                     if (faceBlurriness < 10) {
                         status = FACE_TOO_BLURRY_CODE;

@@ -3,7 +3,6 @@ package com.biometrics.utils;
 import org.opencv.core.Point;
 import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;
-import org.opencv.imgproc.CLAHE;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 
@@ -13,7 +12,6 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.opencv.core.CvType.CV_64F;
@@ -168,7 +166,7 @@ public final class OpenCVUtils {
         frame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
     }
 
-    public static Mat resize(Mat image, int maxWidth, int maxHeight, int minWidth, int minHeight) {
+    public static void resize(Mat image, Mat destinationImage, int maxWidth, int maxHeight, int minWidth, int minHeight) {
         Size imageSize = image.size();
         double newImageWidth = imageSize.width;
         double newImageHeight = imageSize.height;
@@ -198,107 +196,36 @@ public final class OpenCVUtils {
         }
 
         Size newImageSize = new Size(newImageWidth, newImageHeight);
-        Mat resizedImage = new Mat(newImageSize, CvType.CV_8UC4);
-        Imgproc.resize(image, resizedImage, newImageSize);
-        return resizedImage;
+        Imgproc.resize(image, destinationImage, newImageSize);
     }
 
-    public static Mat enhance(Mat src, double clipPercentage){
-        int histSize = 256;
-        double alpha, beta;
-        double minGray, maxGray;
-
-        Mat gray = null;
-        if(src.type() == CvType.CV_8UC1){
-            gray = src.clone();
-        }
-        else{
-            gray = new Mat();
-            Imgproc.cvtColor(src, gray, src.type() == CvType.CV_8UC3? Imgproc.COLOR_RGB2GRAY:Imgproc.COLOR_RGBA2GRAY);
-        }
-
-        if(clipPercentage == 0) {
-            Core.MinMaxLocResult minMaxGray = Core.minMaxLoc(gray);
-            minGray = minMaxGray.minVal;
-            maxGray = minMaxGray.maxVal;
-        }
-        else{
-            Mat hist = new Mat();
-            MatOfInt size = new MatOfInt(histSize);
-            MatOfInt channels = new MatOfInt(0);
-            MatOfFloat ranges = new MatOfFloat(0, 256);
-            Imgproc.calcHist(Arrays.asList(gray), channels, new Mat(), hist, size, ranges, false);
-            gray.release();
-
-            double[] accumulator = new double[histSize];
-
-            accumulator[0] = hist.get(0, 0)[0];
-            for(int i = 1; i < histSize; i++){
-                accumulator[i] = accumulator[i - 1] + hist.get(i, 0)[0];
-            }
-
-            hist.release();
-
-            double max = accumulator[accumulator.length - 1];
-            clipPercentage = (clipPercentage * (max/100.0));
-            clipPercentage = clipPercentage / 2.0f;
-
-            minGray = 0;
-            while (minGray < histSize && accumulator[(int) minGray] < clipPercentage){
-                minGray++;
-            }
-
-            maxGray = histSize - 1;
-            while (maxGray >= 0 && accumulator[(int) maxGray] >= (max - clipPercentage)){
-                maxGray--;
-            }
-        }
-
-        double inputRange = maxGray - minGray;
-        alpha = (histSize - 1)/inputRange;
-        beta = -minGray * alpha;
-        Mat result = new Mat();
-        src.convertTo(result, -1, alpha, beta);
-        if(result.type() == CvType.CV_8UC4){
-            Core.mixChannels(Arrays.asList(src), Arrays.asList(result), new MatOfInt(3, 3));
-        }
-        return result;
+    public static void grayScale(Mat image, Mat destinationImage){
+        Imgproc.cvtColor(image, destinationImage, Imgproc.COLOR_BGR2GRAY);
     }
 
-    public static Mat sharpen(Mat src){
-        Mat sharped = new Mat();
-        Imgproc.GaussianBlur(src, sharped, new Size(0, 0), 3);
-        Core.addWeighted(src, 1.5, sharped, -0.5, 0, sharped);
-        return sharped;
+    public static void blackAndWhite(Mat image, Mat destinationImage) {
+        blackAndWhite(image, destinationImage, 127);
     }
 
-    public static Mat smooth(Mat image, int smothSize) {
-        Mat blurred = new Mat();
-        Imgproc.GaussianBlur(image, blurred, new Size(smothSize, smothSize), 0);
-        return blurred;
+    public static void blackAndWhite(Mat image, Mat destinationImage, double threshold) {
+        grayScale(image, destinationImage);
+        Imgproc.threshold(destinationImage, destinationImage, threshold, 255, Imgproc.THRESH_BINARY);
     }
 
-    public static Mat grayScale(Mat src){
-        Mat result = new Mat();
-        Imgproc.cvtColor(src, result, Imgproc.COLOR_BGR2GRAY);
-        return result;
+    public static void translate(Mat image, Mat destinationImage, double translationX, double translationY, Size destinationSize) {
+        Mat translationMatrix2D = new Mat(2, 3, CV_64F);
+        translationMatrix2D.put(0, 0, 1);
+        translationMatrix2D.put(0, 1, 0);
+        translationMatrix2D.put(0, 2, translationX);
+        translationMatrix2D.put(1, 0, 0);
+        translationMatrix2D.put(1, 1, 1);
+        translationMatrix2D.put(1, 2, translationY);
+        Imgproc.warpAffine(image, destinationImage, translationMatrix2D, destinationSize, Imgproc.INTER_LINEAR, Core.BORDER_CONSTANT);
     }
 
-    public static Mat blackAndWhite(Mat src) {
-        return blackAndWhite(src, 127);
-    }
-
-    public static Mat blackAndWhite(Mat src, double threshold) {
-        Mat result = grayScale(src);
-        Imgproc.threshold(result, result, threshold, 255, Imgproc.THRESH_BINARY);
-        return result;
-    }
-
-    public static Mat equalize(Mat src) {
-        CLAHE clahe = Imgproc.createCLAHE(2.0, new Size(8, 8));
-        Mat equalized = new Mat();
-        clahe.apply(src, equalized);
-        return equalized;
+    public static void rotate (Mat image, Mat destinationImage, Point anchorPoint, double angle, Size destinationSize) {
+        Mat rotatedMatrix2D = Imgproc.getRotationMatrix2D(anchorPoint, angle, 1.0);
+        Imgproc.warpAffine(image, destinationImage, rotatedMatrix2D, destinationSize, Imgproc.INTER_CUBIC, Core.BORDER_CONSTANT);
     }
 
     public static Mat getLBP(Mat src) {
