@@ -11,7 +11,6 @@ import java.util.*;
 import static org.neogroup.warp.Warp.getLogger;
 import static org.opencv.core.Core.ROTATE_180;
 import static org.opencv.core.CvType.CV_32F;
-import static org.opencv.core.CvType.CV_64F;
 
 public class MRZUtils {
 
@@ -372,14 +371,11 @@ public class MRZUtils {
         double rectAspectRatioHeight = rotatedRect.size.height / rotatedRect.size.width;
         double aspectRatio = Math.max(rectAspectRatioWidth, rectAspectRatioHeight);
         if (aspectRatio > 3) {
-            Size originalImageSize = resizedImg.size();
-            double xMultiplier = originalImageSize.width / newSize.width;
-            double yMultiplier = originalImageSize.height / newSize.height;
-            double rectWidth = Math.max(rotatedRect.size.width, rotatedRect.size.height) * xMultiplier;
-            double rectHeight = Math.min(rotatedRect.size.width, rotatedRect.size.height) * yMultiplier;
+            double rectWidth = Math.max(rotatedRect.size.width, rotatedRect.size.height);
+            double rectHeight = Math.min(rotatedRect.size.width, rotatedRect.size.height);
             Size holderSize = new Size(rectWidth, rectWidth);
             Mat transformedImg = new Mat();
-            OpenCVUtils.translate(resizedImg, transformedImg, (holderSize.width / 2) - rotatedRect.center.x * xMultiplier, (holderSize.height / 2) - rotatedRect.center.y * yMultiplier, holderSize);
+            OpenCVUtils.translate(resizedImg, transformedImg, (holderSize.width / 2) - rotatedRect.center.x, (holderSize.height / 2) - rotatedRect.center.y, holderSize);
             OpenCVUtils.rotate(transformedImg, transformedImg, new Point(holderSize.width/2, holderSize.height/2), rotatedRect.size.width > rotatedRect.size.height ? rotatedRect.angle : 90 + rotatedRect.angle, holderSize);
             mrzMat = transformedImg.submat(new Rect(0,(int)((holderSize.height / 2) - (rectHeight / 2)), (int)rectWidth, (int)rectHeight));
         }
