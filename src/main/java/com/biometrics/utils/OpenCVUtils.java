@@ -42,13 +42,10 @@ public final class OpenCVUtils {
 
     public static void subImage(Mat image, Mat destinationImage, RotatedRect rect) {
         Size destinationSize = rect.size;
-        Point rotationAnchor = rect.center;
-        double translationX = (destinationSize.width / 2.0) - rotationAnchor.x;
-        double translationY = (destinationSize.height / 2.0) - rotationAnchor.y;
-        Mat matrix = Imgproc.getRotationMatrix2D(rotationAnchor, rect.angle, 1.0);
-        matrix.put(0, 2, matrix.get(0,2)[0] + translationX);
-        matrix.put(1, 2, matrix.get(1,2)[0] + translationY);
-        Imgproc.warpAffine(image, destinationImage, matrix, destinationSize, Imgproc.INTER_CUBIC, Core.BORDER_CONSTANT);
+        Point rotationAnchorPoint = rect.center;
+        double translationX = (destinationSize.width / 2.0) - rotationAnchorPoint.x;
+        double translationY = (destinationSize.height / 2.0) - rotationAnchorPoint.y;
+        rotateAndTranslate(image, destinationImage, rotationAnchorPoint, rect.angle, translationX, translationY, destinationSize);
     }
 
     public static byte[] getImageBytes(Mat image) {
@@ -224,19 +221,26 @@ public final class OpenCVUtils {
     }
 
     public static void translate(Mat image, Mat destinationImage, double translationX, double translationY, Size destinationSize) {
-        Mat translationMatrix2D = new Mat(2, 3, CV_64F);
-        translationMatrix2D.put(0, 0, 1);
-        translationMatrix2D.put(0, 1, 0);
-        translationMatrix2D.put(0, 2, translationX);
-        translationMatrix2D.put(1, 0, 0);
-        translationMatrix2D.put(1, 1, 1);
-        translationMatrix2D.put(1, 2, translationY);
-        Imgproc.warpAffine(image, destinationImage, translationMatrix2D, destinationSize, Imgproc.INTER_LINEAR, Core.BORDER_CONSTANT);
+        Mat matrix = new Mat(2, 3, CV_64F);
+        matrix.put(0, 0, 1);
+        matrix.put(0, 1, 0);
+        matrix.put(0, 2, translationX);
+        matrix.put(1, 0, 0);
+        matrix.put(1, 1, 1);
+        matrix.put(1, 2, translationY);
+        Imgproc.warpAffine(image, destinationImage, matrix, destinationSize, Imgproc.INTER_LINEAR, Core.BORDER_CONSTANT);
     }
 
     public static void rotate (Mat image, Mat destinationImage, Point anchorPoint, double angle, Size destinationSize) {
-        Mat rotatedMatrix2D = Imgproc.getRotationMatrix2D(anchorPoint, angle, 1.0);
-        Imgproc.warpAffine(image, destinationImage, rotatedMatrix2D, destinationSize, Imgproc.INTER_CUBIC, Core.BORDER_CONSTANT);
+        Mat matrix = Imgproc.getRotationMatrix2D(anchorPoint, angle, 1.0);
+        Imgproc.warpAffine(image, destinationImage, matrix, destinationSize, Imgproc.INTER_CUBIC, Core.BORDER_CONSTANT);
+    }
+
+    public static void rotateAndTranslate(Mat image, Mat destinationImage, Point rotationAnchorPoint, double rotationAngle, double translationX, double translationY, Size destinationSize) {
+        Mat matrix = Imgproc.getRotationMatrix2D(rotationAnchorPoint, rotationAngle, 1.0);
+        matrix.put(0, 2, matrix.get(0,2)[0] + translationX);
+        matrix.put(1, 2, matrix.get(1,2)[0] + translationY);
+        Imgproc.warpAffine(image, destinationImage, matrix, destinationSize, Imgproc.INTER_CUBIC, Core.BORDER_CONSTANT);
     }
 
     public static Mat getLBP(Mat src) {
