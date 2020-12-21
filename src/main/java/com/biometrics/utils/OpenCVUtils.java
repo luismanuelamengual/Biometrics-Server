@@ -231,8 +231,8 @@ public final class OpenCVUtils {
         Imgproc.warpAffine(image, destinationImage, matrix, destinationSize, Imgproc.INTER_LINEAR, Core.BORDER_CONSTANT);
     }
 
-    public static void rotate (Mat image, Mat destinationImage, Point anchorPoint, double angle, Size destinationSize) {
-        Mat matrix = Imgproc.getRotationMatrix2D(anchorPoint, angle, 1.0);
+    public static void rotate (Mat image, Mat destinationImage, Point rotationAnchorPoint, double rotationAngle, Size destinationSize) {
+        Mat matrix = Imgproc.getRotationMatrix2D(rotationAnchorPoint, rotationAngle, 1.0);
         Imgproc.warpAffine(image, destinationImage, matrix, destinationSize, Imgproc.INTER_CUBIC, Core.BORDER_CONSTANT);
     }
 
