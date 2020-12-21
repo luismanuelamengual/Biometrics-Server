@@ -40,6 +40,17 @@ public final class OpenCVUtils {
         return Imgcodecs.imdecode(new MatOfByte(imageBytes), flags);
     }
 
+    public static void subImage(Mat image, Mat destinationImage, RotatedRect rect) {
+        Size destinationSize = rect.size;
+        Point rotationAnchor = rect.center;
+        double translationX = (destinationSize.width / 2.0) - rotationAnchor.x;
+        double translationY = (destinationSize.height / 2.0) - rotationAnchor.y;
+        Mat matrix = Imgproc.getRotationMatrix2D(rotationAnchor, rect.angle, 1.0);
+        matrix.put(0, 2, matrix.get(0,2)[0] + translationX);
+        matrix.put(1, 2, matrix.get(1,2)[0] + translationY);
+        Imgproc.warpAffine(image, destinationImage, matrix, destinationSize, Imgproc.INTER_CUBIC, Core.BORDER_CONSTANT);
+    }
+
     public static byte[] getImageBytes(Mat image) {
         return getImageBytes(image, ".jpg");
     }
