@@ -110,14 +110,23 @@ public final class OpenCVUtils {
         return biggestFeature;
     }
 
-    public static void drawRects(Mat image, Rect[] features, Color color) {
-        for (Rect feature : features) {
-            drawRect(image, feature, color);
+    public static void drawRects(Mat image, Rect[] rects, Color color, int thickness) {
+        for (Rect feature : rects) {
+            drawRect(image, feature, color, thickness);
         }
     }
 
-    public static void drawRect(Mat image, Rect feature, Color color) {
-        Imgproc.rectangle(image, new Point(feature.x, feature.y), new Point(feature.x + feature.width, feature.y + feature.height), getScalarFromColor(color),3);
+    public static void drawRect(Mat image, Rect rect, Color color, int thickness) {
+        Imgproc.rectangle(image, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), getScalarFromColor(color), thickness);
+    }
+
+    public static void drawRect(Mat image, RotatedRect rect, Color color, int thickness) {
+        Point[] points = new Point[4];
+        rect.points(points);
+        Scalar scalar = getScalarFromColor(color);
+        for (int i = 0; i < 4; i++) {
+            Imgproc.line(image, points[i], points[(i+1) % 4], scalar, thickness);
+        }
     }
 
     public static void drawContours(Mat image, List<MatOfPoint> contours, Color color, boolean fill) {
