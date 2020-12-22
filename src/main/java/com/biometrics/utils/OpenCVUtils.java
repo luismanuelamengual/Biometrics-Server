@@ -48,6 +48,10 @@ public final class OpenCVUtils {
         rotateAndTranslate(image, destinationImage, rotationAnchorPoint, rect.angle, translationX, translationY, destinationSize);
     }
 
+    public static void subImage(Mat image, Mat destinationImage, Rect rect) {
+        destinationImage = image.submat(rect);
+    }
+
     public static byte[] getImageBytes(Mat image) {
         return getImageBytes(image, ".jpg");
     }
