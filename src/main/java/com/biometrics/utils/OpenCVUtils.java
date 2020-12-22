@@ -129,17 +129,17 @@ public final class OpenCVUtils {
         }
     }
 
-    public static void drawContours(Mat image, List<MatOfPoint> contours, Color color, boolean fill) {
+    public static void drawContours(Mat image, List<MatOfPoint> contours, Color color, int thickness) {
         Scalar colorScalar = getScalarFromColor(color);
         for (int i = 0; i < contours.size(); i++) {
-            Imgproc.drawContours(image, contours, i, colorScalar, fill ? -1 : 1);
+            Imgproc.drawContours(image, contours, i, colorScalar, thickness);
         }
     }
 
-    public static void drawContour(Mat image, MatOfPoint contour, Color color, boolean fill) {
+    public static void drawContour(Mat image, MatOfPoint contour, Color color, int thickness) {
         List<MatOfPoint> contours = new ArrayList<>();
         contours.add(contour);
-        drawContours(image, contours, color, fill);
+        drawContours(image, contours, color, thickness);
     }
 
     public static boolean containsRect(Rect feature, Rect innerFeature) {
