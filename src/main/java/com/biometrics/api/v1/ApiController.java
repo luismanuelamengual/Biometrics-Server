@@ -46,6 +46,7 @@ public class ApiController {
     private static final String RAW_PROPERTY_NAME = "raw";
     private static final String INFORMATION_PROPERTY_NAME = "information";
     private static final String LIVENESS_PROPERTY_NAME = "liveness";
+    private static final String REASON_PROPERTY_NAME = "reason";
 
     private CascadeClassifier faceClassfier;
     private CascadeClassifier profileFaceClassifier;
@@ -190,6 +191,59 @@ public class ApiController {
             }
         }
         return Data.object().set(LIVENESS_PROPERTY_NAME, livenessStatusOk);
+    }
+
+    @Post("check_liveness_3d")
+    public DataObject checkLiveness3d(Request request) {
+        int livenessStatusCode = 0;
+        int[] histSize = { 50, 60 };
+        float[] ranges = { 0, 180, 0, 256 };
+        int[] channels = { 0, 1 };
+        int imagesCount = request.getInt("trailPicturesCount");
+        Mat[] imagesHist = new Mat[imagesCount];
+        Rect[] faceRects = new Rect[imagesCount];
+        double[] faceSizes = new double[imagesCount];
+
+        for (int i = 0; i < imagesCount; i++) {
+            byte[] imageBytes = request.get("trailPicture" + (i + 1), byte[].class);
+            Mat image = OpenCVUtils.getImage(imageBytes);
+            Rect faceRect = OpenCVUtils.detectBiggestFeatureRect(image, faceClassfier);
+            if (faceRect == null) {
+                livenessStatusCode = 1;
+                break;
+            }
+            Imgproc.calcHist(Arrays.asList(image), new MatOfInt(channels), new Mat(), image, new MatOfInt(histSize), new MatOfFloat(ranges), false);
+            Core.normalize(image, image, 0, 1, Core.NORM_MINMAX);
+            imagesHist[i] = image;
+            faceRects[i] = faceRect;
+            faceSizes[i] = faceRect.area();
+        }
+
+        if (livenessStatusCode == 0) {
+            for (int i = 0; i < imagesCount; i++) {
+                if (i > 0) {
+                    double histSimilarity = Imgproc.compareHist(imagesHist[0], imagesHist[i], Imgproc.HISTCMP_CORREL);
+                    if (histSimilarity < 0.5) {
+                        livenessStatusCode = 2;
+                        break;
+                    }
+                }
+                if (i > 1) {
+                    if (faceSizes[i] <= faceSizes[i-2]) {
+                        livenessStatusCode = 3;
+                        break;
+                    }
+                }
+            }
+        }
+        DataObject response = Data.object();
+        if (livenessStatusCode == 0) {
+            response.set(LIVENESS_PROPERTY_NAME, true);
+        } else {
+            response.set(LIVENESS_PROPERTY_NAME, false);
+            response.set(REASON_PROPERTY_NAME, livenessStatusCode);
+        }
+        return response;
     }
 
     @Post("verify_identity")
