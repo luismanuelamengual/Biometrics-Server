@@ -200,21 +200,27 @@ public class ApiController {
         float[] ranges = { 0, 180, 0, 256 };
         int[] channels = { 0, 1 };
         int imagesCount = request.getInt("trailPicturesCount");
-        Mat[] imagesHist = new Mat[imagesCount];
+        Mat firstImageHist = null;
         double[] faceSizes = new double[imagesCount];
         double originCenterX = -1;
         double originCenterY = -1;
+        Mat firstImage = null;
+        Mat lastImage = null;
 
         for (int i = 0; i < imagesCount; i++) {
             byte[] imageBytes = request.get("trailPicture" + (i + 1), byte[].class);
             Mat image = OpenCVUtils.getImage(imageBytes);
+            if (firstImage == null) {
+                firstImage = image;
+            }
+            lastImage = image;
             Rect faceRect = OpenCVUtils.detectBiggestFeatureRect(image, faceClassfier);
             if (faceRect == null) {
                 livenessStatusCode = 1;
                 break;
             }
-            double faceRectCenterX = faceRect.x + (faceRect.width / 2);
-            double faceRectCenterY = faceRect.y + (faceRect.height / 2);
+            double faceRectCenterX = faceRect.x + (faceRect.width / 2.0);
+            double faceRectCenterY = faceRect.y + (faceRect.height / 2.0);
             double distanceToOrigin;
             if (originCenterX < 0 || originCenterY < 0) {
                 originCenterX = faceRectCenterX;
@@ -228,21 +234,23 @@ public class ApiController {
                 break;
             }
 
-            Imgproc.calcHist(Arrays.asList(image), new MatOfInt(channels), new Mat(), image, new MatOfInt(histSize), new MatOfFloat(ranges), false);
-            Core.normalize(image, image, 0, 1, Core.NORM_MINMAX);
-            imagesHist[i] = image;
+            Mat imageHist = new Mat();
+            Imgproc.calcHist(Arrays.asList(image), new MatOfInt(channels), new Mat(), imageHist, new MatOfInt(histSize), new MatOfFloat(ranges), false);
+            Core.normalize(imageHist, imageHist, 0, 1, Core.NORM_MINMAX);
+            if (firstImageHist == null) {
+                firstImageHist = imageHist;
+            } else {
+                double histSimilarity = Imgproc.compareHist(firstImageHist, imageHist, Imgproc.HISTCMP_CORREL);
+                if (histSimilarity < 0.5) {
+                    livenessStatusCode = 4;
+                    break;
+                }
+            }
             faceSizes[i] = faceRect.area();
         }
 
         if (livenessStatusCode == 0) {
             for (int i = 0; i < imagesCount; i++) {
-                if (i > 0) {
-                    double histSimilarity = Imgproc.compareHist(imagesHist[0], imagesHist[i], Imgproc.HISTCMP_CORREL);
-                    if (histSimilarity < 0.5) {
-                        livenessStatusCode = 4;
-                        break;
-                    }
-                }
                 if (i > 1) {
                     if (faceSizes[i] <= faceSizes[i-2]) {
                         livenessStatusCode = 3;
