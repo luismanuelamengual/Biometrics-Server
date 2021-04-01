@@ -103,7 +103,7 @@ public class MainController {
         }
         DataObject result = Data.object();
         result.set(SUCCESS_PARAMETER_NAME, false);
-        result.set(MESSAGE_PARAMETER_NAME, exception.getMessage());
+        result.set(MESSAGE_PARAMETER_NAME, exception.getMessage().replaceAll("\n", ""));
         if (!request.getRequestURI().equals(BASE_PATH)) {
             if (exception instanceof ResponseException) {
                 getLogger().info(jsonFormatter.format(getLogData(request, result)));

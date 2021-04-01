@@ -201,8 +201,9 @@ public class ApiController {
         int[] channels = { 0, 1 };
         int imagesCount = request.getInt("trailPicturesCount");
         Mat[] imagesHist = new Mat[imagesCount];
-        Rect[] faceRects = new Rect[imagesCount];
         double[] faceSizes = new double[imagesCount];
+        double originCenterX = -1;
+        double originCenterY = -1;
 
         for (int i = 0; i < imagesCount; i++) {
             byte[] imageBytes = request.get("trailPicture" + (i + 1), byte[].class);
@@ -212,10 +213,24 @@ public class ApiController {
                 livenessStatusCode = 1;
                 break;
             }
+            double faceRectCenterX = faceRect.x + (faceRect.width / 2);
+            double faceRectCenterY = faceRect.y + (faceRect.height / 2);
+            double distanceToOrigin;
+            if (originCenterX < 0 || originCenterY < 0) {
+                originCenterX = faceRectCenterX;
+                originCenterY = faceRectCenterY;
+                distanceToOrigin = 0;
+            } else {
+                distanceToOrigin = Math.sqrt(Math.pow(faceRectCenterX - originCenterX, 2) + Math.pow(faceRectCenterY - originCenterY, 2));
+            }
+            if (distanceToOrigin >= 20) {
+                livenessStatusCode = 2;
+                break;
+            }
+
             Imgproc.calcHist(Arrays.asList(image), new MatOfInt(channels), new Mat(), image, new MatOfInt(histSize), new MatOfFloat(ranges), false);
             Core.normalize(image, image, 0, 1, Core.NORM_MINMAX);
             imagesHist[i] = image;
-            faceRects[i] = faceRect;
             faceSizes[i] = faceRect.area();
         }
 
@@ -224,7 +239,7 @@ public class ApiController {
                 if (i > 0) {
                     double histSimilarity = Imgproc.compareHist(imagesHist[0], imagesHist[i], Imgproc.HISTCMP_CORREL);
                     if (histSimilarity < 0.5) {
-                        livenessStatusCode = 2;
+                        livenessStatusCode = 4;
                         break;
                     }
                 }
@@ -236,6 +251,7 @@ public class ApiController {
                 }
             }
         }
+
         DataObject response = Data.object();
         if (livenessStatusCode == 0) {
             response.set(LIVENESS_PROPERTY_NAME, true);
