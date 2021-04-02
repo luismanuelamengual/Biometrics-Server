@@ -13,13 +13,12 @@ import org.neogroup.warp.controllers.routing.Post;
 import org.neogroup.warp.data.Data;
 import org.neogroup.warp.data.DataObject;
 import org.opencv.core.*;
+import org.opencv.features2d.FlannBasedMatcher;
+import org.opencv.features2d.SIFT;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @ControllerComponent("v1")
 public class ApiController {
@@ -258,6 +257,38 @@ public class ApiController {
                     }
                 }
             }
+        }
+
+        if (livenessStatusCode == 0) {
+            SIFT sift = SIFT.create();
+            MatOfKeyPoint keypoints1 = new MatOfKeyPoint();
+            MatOfKeyPoint keypoints2 = new MatOfKeyPoint();
+            Mat descriptors1 = new Mat();
+            Mat descriptors2 = new Mat();
+            sift.detectAndCompute(firstImage, new Mat(), keypoints1, descriptors1);
+            sift.detectAndCompute(lastImage, new Mat(), keypoints2, descriptors2);
+            FlannBasedMatcher matcher = new FlannBasedMatcher();
+            List<MatOfDMatch> matches = new ArrayList();
+            matcher.knnMatch(descriptors1, descriptors2, matches,  2);
+            LinkedList<DMatch> bestMatchesList = new LinkedList<>();
+            matches.forEach(match -> {
+                DMatch[] dmatcharray = match.toArray();
+                DMatch m1 = dmatcharray[0];
+                DMatch m2 = dmatcharray[1];
+                if (m1.distance <= m2.distance * 0.7) {
+                    bestMatchesList.addLast(m1);
+                }
+            });
+            if (bestMatchesList.size() >= 30) {
+                livenessStatusCode = 5;
+            }
+
+            /*Mat matchImage = new Mat();
+            MatOfDMatch bestMatches = new MatOfDMatch();
+            bestMatches.fromList(bestMatchesList);
+            Features2d.drawMatches(firstImage, keypoints1, lastImage, keypoints2, bestMatches, matchImage);
+            OpenCVUtils.display(matchImage);*/
+
         }
 
         DataObject response = Data.object();

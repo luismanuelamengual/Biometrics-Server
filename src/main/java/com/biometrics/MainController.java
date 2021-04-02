@@ -98,12 +98,16 @@ public class MainController {
 
     @Error
     public DataObject errorHandler(Request request, Throwable exception) {
-        if (exception.getCause() != null) {
+        if (exception.getCause() != null && exception.getCause().getMessage() != null) {
             exception = exception.getCause();
+        }
+        String errorMessage = exception.getMessage();
+        if (errorMessage == null) {
+            errorMessage = "Unknown error";
         }
         DataObject result = Data.object();
         result.set(SUCCESS_PARAMETER_NAME, false);
-        result.set(MESSAGE_PARAMETER_NAME, exception.getMessage().replaceAll("\n", ""));
+        result.set(MESSAGE_PARAMETER_NAME, errorMessage);
         if (!request.getRequestURI().equals(BASE_PATH)) {
             if (exception instanceof ResponseException) {
                 getLogger().info(jsonFormatter.format(getLogData(request, result)));
