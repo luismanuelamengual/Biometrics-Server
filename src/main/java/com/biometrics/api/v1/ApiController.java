@@ -13,6 +13,7 @@ import org.neogroup.warp.controllers.routing.Post;
 import org.neogroup.warp.data.Data;
 import org.neogroup.warp.data.DataObject;
 import org.opencv.core.*;
+import org.opencv.features2d.Features2d;
 import org.opencv.features2d.FlannBasedMatcher;
 import org.opencv.features2d.SIFT;
 import org.opencv.imgproc.Imgproc;
@@ -193,80 +194,41 @@ public class ApiController {
     }
 
     @Post("check_liveness_3d")
-    public DataObject checkLiveness3d(Request request) {
+    public DataObject checkLiveness3d(@Parameter("picture") byte[] imageBytes, @Parameter("zoomedPicture") byte[] zoomedImageBytes) {
         int livenessStatusCode = 0;
         int[] histSize = { 50, 60 };
         float[] ranges = { 0, 180, 0, 256 };
         int[] channels = { 0, 1 };
-        int imagesCount = request.getInt("trailPicturesCount");
-        Mat firstImageHist = null;
-        double[] faceSizes = new double[imagesCount];
-        double originCenterX = -1;
-        double originCenterY = -1;
-        Mat firstImage = null;
-        Mat lastImage = null;
-
-        for (int i = 0; i < imagesCount; i++) {
-            byte[] imageBytes = request.get("trailPicture" + (i + 1), byte[].class);
-            Mat image = OpenCVUtils.getImage(imageBytes);
-            if (firstImage == null) {
-                firstImage = image;
-            }
-            lastImage = image;
-            Rect faceRect = OpenCVUtils.detectBiggestFeatureRect(image, faceClassfier);
-            if (faceRect == null) {
-                livenessStatusCode = 1;
-                break;
-            }
-            double faceRectCenterX = faceRect.x + (faceRect.width / 2.0);
-            double faceRectCenterY = faceRect.y + (faceRect.height / 2.0);
-            double distanceToOrigin;
-            if (originCenterX < 0 || originCenterY < 0) {
-                originCenterX = faceRectCenterX;
-                originCenterY = faceRectCenterY;
-                distanceToOrigin = 0;
-            } else {
-                distanceToOrigin = Math.sqrt(Math.pow(faceRectCenterX - originCenterX, 2) + Math.pow(faceRectCenterY - originCenterY, 2));
-            }
-            if (distanceToOrigin >= 20) {
+        Mat image = OpenCVUtils.getImage(imageBytes);
+        Mat zoomedImage = OpenCVUtils.getImage(zoomedImageBytes);
+        Rect faceRect = OpenCVUtils.detectBiggestFeatureRect(image, faceClassfier);
+        Rect zoomedFaceRect = OpenCVUtils.detectBiggestFeatureRect(zoomedImage, faceClassfier);
+        if (faceRect == null || zoomedFaceRect == null) {
+            livenessStatusCode = 1;
+        }
+        if (livenessStatusCode == 0) {
+            if (faceRect.area() >= zoomedFaceRect.area()) {
                 livenessStatusCode = 2;
-                break;
             }
-
+        }
+        if (livenessStatusCode == 0) {
             Mat imageHist = new Mat();
             Imgproc.calcHist(Arrays.asList(image), new MatOfInt(channels), new Mat(), imageHist, new MatOfInt(histSize), new MatOfFloat(ranges), false);
-            Core.normalize(imageHist, imageHist, 0, 1, Core.NORM_MINMAX);
-            if (firstImageHist == null) {
-                firstImageHist = imageHist;
-            } else {
-                double histSimilarity = Imgproc.compareHist(firstImageHist, imageHist, Imgproc.HISTCMP_CORREL);
-                if (histSimilarity < 0.5) {
-                    livenessStatusCode = 4;
-                    break;
-                }
-            }
-            faceSizes[i] = faceRect.area();
-        }
-
-        if (livenessStatusCode == 0) {
-            for (int i = 0; i < imagesCount; i++) {
-                if (i > 1) {
-                    if (faceSizes[i] <= faceSizes[i-2]) {
-                        livenessStatusCode = 3;
-                        break;
-                    }
-                }
+            Mat zoomedImageHist = new Mat();
+            Imgproc.calcHist(Arrays.asList(zoomedImage), new MatOfInt(channels), new Mat(), zoomedImageHist, new MatOfInt(histSize), new MatOfFloat(ranges), false);
+            double histSimilarity = Imgproc.compareHist(imageHist, zoomedImageHist, Imgproc.HISTCMP_CORREL);
+            if (histSimilarity < 0.5) {
+                livenessStatusCode = 3;
             }
         }
-
         if (livenessStatusCode == 0) {
             SIFT sift = SIFT.create();
             MatOfKeyPoint keypoints1 = new MatOfKeyPoint();
             MatOfKeyPoint keypoints2 = new MatOfKeyPoint();
             Mat descriptors1 = new Mat();
             Mat descriptors2 = new Mat();
-            sift.detectAndCompute(firstImage, new Mat(), keypoints1, descriptors1);
-            sift.detectAndCompute(lastImage, new Mat(), keypoints2, descriptors2);
+            sift.detectAndCompute(image, new Mat(), keypoints1, descriptors1);
+            sift.detectAndCompute(zoomedImage, new Mat(), keypoints2, descriptors2);
             FlannBasedMatcher matcher = new FlannBasedMatcher();
             List<MatOfDMatch> matches = new ArrayList();
             matcher.knnMatch(descriptors1, descriptors2, matches,  2);
@@ -279,16 +241,18 @@ public class ApiController {
                     bestMatchesList.addLast(m1);
                 }
             });
-            if (bestMatchesList.size() >= 30) {
+            if (bestMatchesList.size() < 15) {
+                livenessStatusCode = 4;
+            } else if (bestMatchesList.size() >= 50) {
                 livenessStatusCode = 5;
             }
 
-            /*Mat matchImage = new Mat();
+            /*System.out.println (bestMatchesList.size());
+            Mat matchImage = new Mat();
             MatOfDMatch bestMatches = new MatOfDMatch();
             bestMatches.fromList(bestMatchesList);
-            Features2d.drawMatches(firstImage, keypoints1, lastImage, keypoints2, bestMatches, matchImage);
+            Features2d.drawMatches(image, keypoints1, zoomedImage, keypoints2, bestMatches, matchImage);
             OpenCVUtils.display(matchImage);*/
-
         }
 
         DataObject response = Data.object();
