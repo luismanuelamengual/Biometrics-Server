@@ -212,13 +212,20 @@ public class ApiController {
             }
         }
         if (livenessStatusCode == 0) {
+            double imageBlurriness = OpenCVUtils.getBlurriness(image);
+            double zoomedImageBlurriness = OpenCVUtils.getBlurriness(zoomedImage);
+            if (imageBlurriness < 10 || zoomedImageBlurriness < 10) {
+                livenessStatusCode = 3;
+            }
+        }
+        if (livenessStatusCode == 0) {
             Mat imageHist = new Mat();
             Imgproc.calcHist(Arrays.asList(image), new MatOfInt(channels), new Mat(), imageHist, new MatOfInt(histSize), new MatOfFloat(ranges), false);
             Mat zoomedImageHist = new Mat();
             Imgproc.calcHist(Arrays.asList(zoomedImage), new MatOfInt(channels), new Mat(), zoomedImageHist, new MatOfInt(histSize), new MatOfFloat(ranges), false);
             double histSimilarity = Imgproc.compareHist(imageHist, zoomedImageHist, Imgproc.HISTCMP_CORREL);
             if (histSimilarity < 0.75) {
-                livenessStatusCode = 3;
+                livenessStatusCode = 4;
             }
         }
         if (livenessStatusCode == 0) {
@@ -242,9 +249,9 @@ public class ApiController {
                 }
             });
             if (bestMatchesList.size() < 15) {
-                livenessStatusCode = 4;
-            } else if (bestMatchesList.size() >= 50) {
                 livenessStatusCode = 5;
+            } else if (bestMatchesList.size() >= 50) {
+                livenessStatusCode = 6;
             }
 
             /*System.out.println (bestMatchesList.size());
