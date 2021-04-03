@@ -13,13 +13,14 @@ import org.neogroup.warp.controllers.routing.Post;
 import org.neogroup.warp.data.Data;
 import org.neogroup.warp.data.DataObject;
 import org.opencv.core.*;
-import org.opencv.features2d.Features2d;
 import org.opencv.features2d.FlannBasedMatcher;
 import org.opencv.features2d.SIFT;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 
 import java.util.*;
+
+import static org.opencv.imgproc.Imgproc.THRESH_BINARY;
 
 @ControllerComponent("v1")
 public class ApiController {
@@ -196,9 +197,6 @@ public class ApiController {
     @Post("check_liveness_3d")
     public DataObject checkLiveness3d(@Parameter("picture") byte[] imageBytes, @Parameter("zoomedPicture") byte[] zoomedImageBytes) {
         int livenessStatusCode = 0;
-        int[] histSize = { 50, 60 };
-        float[] ranges = { 0, 180, 0, 256 };
-        int[] channels = { 0, 1 };
         Mat image = OpenCVUtils.getImage(imageBytes);
         Mat zoomedImage = OpenCVUtils.getImage(zoomedImageBytes);
         Rect faceRect = OpenCVUtils.detectBiggestFeatureRect(image, faceClassfier);
@@ -219,13 +217,35 @@ public class ApiController {
             }
         }
         if (livenessStatusCode == 0) {
+            Mat testImage = new Mat();
+            OpenCVUtils.grayScale(image, testImage);
+            Imgproc.threshold(testImage, testImage,200,255, THRESH_BINARY);
+            MatOfDouble mu = new MatOfDouble();
+            MatOfDouble sigma = new MatOfDouble();
+            Core.meanStdDev(testImage, mu, sigma);
+            double variance = Math.pow(sigma.get(0,0)[0], 2);
+            if (variance > 5000 && variance <= 8500) {
+                livenessStatusCode = 4;
+            }
+            OpenCVUtils.grayScale(zoomedImage, testImage);
+            Imgproc.threshold(testImage, testImage,200,255, THRESH_BINARY);
+            Core.meanStdDev(testImage, mu, sigma);
+            variance = Math.pow(sigma.get(0,0)[0], 2);
+            if (variance > 5000 && variance <= 8500) {
+                livenessStatusCode = 4;
+            }
+        }
+        if (livenessStatusCode == 0) {
+            int[] histSize = { 50, 60 };
+            float[] ranges = { 0, 180, 0, 256 };
+            int[] channels = { 0, 1 };
             Mat imageHist = new Mat();
             Imgproc.calcHist(Arrays.asList(image), new MatOfInt(channels), new Mat(), imageHist, new MatOfInt(histSize), new MatOfFloat(ranges), false);
             Mat zoomedImageHist = new Mat();
             Imgproc.calcHist(Arrays.asList(zoomedImage), new MatOfInt(channels), new Mat(), zoomedImageHist, new MatOfInt(histSize), new MatOfFloat(ranges), false);
             double histSimilarity = Imgproc.compareHist(imageHist, zoomedImageHist, Imgproc.HISTCMP_CORREL);
             if (histSimilarity < 0.75) {
-                livenessStatusCode = 4;
+                livenessStatusCode = 5;
             }
         }
         if (livenessStatusCode == 0) {
@@ -249,9 +269,9 @@ public class ApiController {
                 }
             });
             if (bestMatchesList.size() < 15) {
-                livenessStatusCode = 5;
-            } else if (bestMatchesList.size() >= 50) {
                 livenessStatusCode = 6;
+            } else if (bestMatchesList.size() >= 50) {
+                livenessStatusCode = 7;
             }
 
             /*System.out.println (bestMatchesList.size());
