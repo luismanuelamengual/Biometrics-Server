@@ -268,10 +268,8 @@ public class ApiController {
                     bestMatchesList.addLast(m1);
                 }
             });
-            if (bestMatchesList.size() < 15) {
+            if (bestMatchesList.size() >= 50) {
                 livenessStatusCode = 6;
-            } else if (bestMatchesList.size() >= 50) {
-                livenessStatusCode = 7;
             }
 
             /*System.out.println (bestMatchesList.size());
@@ -281,7 +279,14 @@ public class ApiController {
             Features2d.drawMatches(image, keypoints1, zoomedImage, keypoints2, bestMatches, matchImage);
             OpenCVUtils.display(matchImage);*/
         }
-
+        if (livenessStatusCode == 0) {
+            byte[] faceImageBytes = OpenCVUtils.getImageBytes(image.submat(faceRect));
+            byte[] zoomedFaceImageBytes = OpenCVUtils.getImageBytes(zoomedImage.submat(zoomedFaceRect));
+            float similarity = AmazonUtils.compareFaces(faceImageBytes, zoomedFaceImageBytes);
+            if (similarity <= 0) {
+                livenessStatusCode = 7;
+            }
+        }
         DataObject response = Data.object();
         if (livenessStatusCode == 0) {
             response.set(LIVENESS_PROPERTY_NAME, true);
