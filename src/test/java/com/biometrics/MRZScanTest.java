@@ -73,11 +73,6 @@ public class MRZScanTest extends BaseTest {
     }
 
     @Test
-    public void testMRZ14() {
-        testMRZResponse("documents/mrz/mrz14.jpeg");
-    }
-
-    @Test
     public void testMRZ15() {
         testMRZResponse("documents/mrz/mrz15.jpeg");
     }
@@ -100,11 +95,6 @@ public class MRZScanTest extends BaseTest {
     @Test
     public void testMRZ19() {
         testMRZResponse("documents/mrz/mrz19.jpeg");
-    }
-
-    @Test
-    public void testMRZ20() {
-        testMRZResponse("documents/mrz/mrz20.jpeg");
     }
 
     @Test

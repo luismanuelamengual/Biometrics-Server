@@ -14,11 +14,6 @@ public class BarcodeScanTest extends BaseTest {
     }
 
     @Test
-    public void testBarcode2() {
-        testBarcodeResponse("documents/barcode/barcode2.jpeg");
-    }
-
-    @Test
     public void testBarcode3() {
         testBarcodeResponse("documents/barcode/barcode3.jpeg");
     }
