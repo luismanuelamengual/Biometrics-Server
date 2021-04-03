@@ -217,7 +217,7 @@ public class ApiController {
             Mat zoomedImageHist = new Mat();
             Imgproc.calcHist(Arrays.asList(zoomedImage), new MatOfInt(channels), new Mat(), zoomedImageHist, new MatOfInt(histSize), new MatOfFloat(ranges), false);
             double histSimilarity = Imgproc.compareHist(imageHist, zoomedImageHist, Imgproc.HISTCMP_CORREL);
-            if (histSimilarity < 0.5) {
+            if (histSimilarity < 0.75) {
                 livenessStatusCode = 3;
             }
         }
