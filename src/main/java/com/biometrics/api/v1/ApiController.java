@@ -195,28 +195,48 @@ public class ApiController {
     }
 
     @Post("check_liveness_3d")
-    public DataObject checkLiveness3d(@Parameter("picture") byte[] imageBytes, @Parameter("zoomedPicture") byte[] zoomedImageBytes) {
+    public DataObject checkLiveness3d(@Parameter("picture") byte[] imageBytes, @Parameter("zoomedPicture") byte[] zoomedImageBytes, @Parameter(value="debugMode",required=false) Boolean debugMode) {
+        if (debugMode == null) {
+            debugMode = false;
+        }
+        DataObject debugData = Data.object();
         int livenessStatusCode = 0;
         Mat image = OpenCVUtils.getImage(imageBytes);
         Mat zoomedImage = OpenCVUtils.getImage(zoomedImageBytes);
+        if (debugMode) {
+            debugData.set("imageWidth", image.width());
+            debugData.set("imageHeight", image.height());
+            debugData.set("zoomedImageWidth", zoomedImage.width());
+            debugData.set("zoomedImageHeight", zoomedImage.height());
+        }
         Rect faceRect = OpenCVUtils.detectBiggestFeatureRect(image, faceClassfier);
         Rect zoomedFaceRect = OpenCVUtils.detectBiggestFeatureRect(zoomedImage, faceClassfier);
         if (faceRect == null || zoomedFaceRect == null) {
             livenessStatusCode = 1;
         }
         if (livenessStatusCode == 0) {
-            if (faceRect.area() >= zoomedFaceRect.area()) {
+            double imageFaceArea = faceRect.area();
+            double zoomedImageFaceArea = zoomedFaceRect.area();
+            if (debugMode) {
+                debugData.set("imageFaceArea", imageFaceArea);
+                debugData.set("zoomedImageFaceArea", zoomedImageFaceArea);
+            }
+            if (imageFaceArea >= zoomedImageFaceArea) {
                 livenessStatusCode = 2;
             }
         }
-        if (livenessStatusCode == 0) {
+        if (livenessStatusCode == 0 || debugMode) {
             double imageBlurriness = OpenCVUtils.getBlurriness(image);
             double zoomedImageBlurriness = OpenCVUtils.getBlurriness(zoomedImage);
-            if (imageBlurriness < 10 || zoomedImageBlurriness < 10) {
+            if (debugMode) {
+                debugData.set("imageBlurriness", imageBlurriness);
+                debugData.set("zoomedImageBlurriness", zoomedImageBlurriness);
+            }
+            if (livenessStatusCode == 0 && imageBlurriness < 10 || zoomedImageBlurriness < 10) {
                 livenessStatusCode = 3;
             }
         }
-        if (livenessStatusCode == 0) {
+        if (livenessStatusCode == 0 || debugMode) {
             Mat testImage = new Mat();
             OpenCVUtils.grayScale(image, testImage);
             Imgproc.threshold(testImage, testImage,200,255, THRESH_BINARY);
@@ -224,18 +244,24 @@ public class ApiController {
             MatOfDouble sigma = new MatOfDouble();
             Core.meanStdDev(testImage, mu, sigma);
             double variance = Math.pow(sigma.get(0,0)[0], 2);
-            if (variance > 5000 && variance <= 8500) {
+            if (debugMode) {
+                debugData.set("imageBrightSpotVariance", variance);
+            }
+            if (livenessStatusCode == 0 && variance > 5000 && variance <= 8500) {
                 livenessStatusCode = 4;
             }
             OpenCVUtils.grayScale(zoomedImage, testImage);
             Imgproc.threshold(testImage, testImage,200,255, THRESH_BINARY);
             Core.meanStdDev(testImage, mu, sigma);
             variance = Math.pow(sigma.get(0,0)[0], 2);
-            if (variance > 5000 && variance <= 8500) {
+            if (debugMode) {
+                debugData.set("zoomedImageBrightSpotVariance", variance);
+            }
+            if (livenessStatusCode == 0 && variance > 5000 && variance <= 8500) {
                 livenessStatusCode = 4;
             }
         }
-        if (livenessStatusCode == 0) {
+        if (livenessStatusCode == 0 || debugMode) {
             int[] histSize = { 50, 60 };
             float[] ranges = { 0, 180, 0, 256 };
             int[] channels = { 0, 1 };
@@ -244,11 +270,14 @@ public class ApiController {
             Mat zoomedImageHist = new Mat();
             Imgproc.calcHist(Arrays.asList(zoomedImage), new MatOfInt(channels), new Mat(), zoomedImageHist, new MatOfInt(histSize), new MatOfFloat(ranges), false);
             double histSimilarity = Imgproc.compareHist(imageHist, zoomedImageHist, Imgproc.HISTCMP_CORREL);
-            if (histSimilarity < 0.75) {
+            if (debugMode) {
+                debugData.set("imagesHistSimilarity", histSimilarity);
+            }
+            if (livenessStatusCode == 0 && histSimilarity < 0.75) {
                 livenessStatusCode = 5;
             }
         }
-        if (livenessStatusCode == 0) {
+        if (livenessStatusCode == 0 || debugMode) {
             SIFT sift = SIFT.create();
             MatOfKeyPoint keypoints1 = new MatOfKeyPoint();
             MatOfKeyPoint keypoints2 = new MatOfKeyPoint();
@@ -268,7 +297,10 @@ public class ApiController {
                     bestMatchesList.addLast(m1);
                 }
             });
-            if (bestMatchesList.size() >= 50) {
+            if (debugMode) {
+                debugData.set("imagesSIFTMatchPoints", bestMatchesList.size());
+            }
+            if (livenessStatusCode == 0 && bestMatchesList.size() >= 50) {
                 livenessStatusCode = 6;
             }
 
@@ -279,11 +311,14 @@ public class ApiController {
             Features2d.drawMatches(image, keypoints1, zoomedImage, keypoints2, bestMatches, matchImage);
             OpenCVUtils.display(matchImage);*/
         }
-        if (livenessStatusCode == 0) {
+        if (livenessStatusCode == 0 || (debugMode && faceRect != null && zoomedFaceRect != null)) {
             byte[] faceImageBytes = OpenCVUtils.getImageBytes(image.submat(faceRect));
             byte[] zoomedFaceImageBytes = OpenCVUtils.getImageBytes(zoomedImage.submat(zoomedFaceRect));
             float similarity = AmazonUtils.compareFaces(faceImageBytes, zoomedFaceImageBytes);
-            if (similarity <= 0) {
+            if (debugMode) {
+                debugData.set("facesSimilarity", similarity);
+            }
+            if (livenessStatusCode == 0 && similarity <= 0) {
                 livenessStatusCode = 7;
             }
         }
@@ -293,6 +328,9 @@ public class ApiController {
         } else {
             response.set(LIVENESS_PROPERTY_NAME, false);
             response.set(REASON_PROPERTY_NAME, livenessStatusCode);
+        }
+        if (debugData.size() > 0) {
+            response.set("debugData", debugData);
         }
         return response;
     }
