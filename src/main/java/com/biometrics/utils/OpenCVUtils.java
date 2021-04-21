@@ -12,10 +12,10 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
-import static org.opencv.core.CvType.CV_64F;
-import static org.opencv.core.CvType.CV_8U;
+import static org.opencv.core.CvType.*;
 
 public final class OpenCVUtils {
 
@@ -320,6 +320,27 @@ public final class OpenCVUtils {
         mag.convertTo(mag, CvType.CV_8UC1);
         Core.normalize(mag, mag, 0, 255, Core.NORM_MINMAX, CvType.CV_8UC1);
         return mag;
+    }
+
+    public static Mat getHistogram(Mat image) {
+        return getHistogram(image, 0, 1000, 500, Color.RED);
+    }
+
+    public static Mat getHistogram(Mat image, int channel, int histWidth, int histHeight, Color color) {
+        Mat histogram = new Mat();
+        int histSize = 256;
+        Scalar scalar = getScalarFromColor(color);
+        Imgproc.calcHist(Arrays.asList(image), new MatOfInt(channel), new Mat(), histogram, new MatOfInt(histSize), new MatOfFloat(0, 255), false);
+        Core.MinMaxLocResult result = Core.minMaxLoc(histogram);
+        double maxValue = result.maxVal;
+        Mat histogramImage = Mat.zeros(histHeight, histWidth, CV_8UC3);
+        for (int i = 0; i < histSize; i++) {
+            double value = histogram.get(i, 0)[0] * histHeight / maxValue;
+            Point point1 = new Point(i * (double)histWidth / (double)histSize, histHeight - 1);
+            Point point2 = new Point(((i + 1) * (double)histWidth / (double)histSize) - 1, histHeight - value);
+            Imgproc.rectangle(histogramImage, point1, point2, scalar, Imgproc.FILLED);
+        }
+        return histogramImage;
     }
 
     public static double getBlurriness(Mat image) {
