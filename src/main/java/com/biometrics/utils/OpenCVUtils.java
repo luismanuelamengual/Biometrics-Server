@@ -234,6 +234,24 @@ public final class OpenCVUtils {
         Imgproc.threshold(destinationImage, destinationImage, threshold, 255, Imgproc.THRESH_BINARY);
     }
 
+    public static void hanningWindow(Mat image, Mat destinationImage) {
+        int rows = image.rows();
+        int cols = image.cols();
+        Mat hanningWindow = new Mat();
+        Imgproc.createHanningWindow(hanningWindow, new Size(cols, rows), CV_64F);
+        int channels = image.channels();
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                double hanningWindowMultiplier = hanningWindow.get(row, col)[0];
+                double[] values = new double[channels];
+                for (int channel = 0; channel < channels; channel++) {
+                    values[channel] = hanningWindowMultiplier * image.get(row, col)[channel];
+                }
+                destinationImage.put(row, col, values);
+            }
+        }
+    }
+
     public static void translate(Mat image, Mat destinationImage, double translationX, double translationY, Size destinationSize) {
         Mat matrix = new Mat(2, 3, CV_64F);
         matrix.put(0, 0, 1);
