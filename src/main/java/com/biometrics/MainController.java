@@ -7,7 +7,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import org.neogroup.warp.Request;
 import org.neogroup.warp.Response;
 import org.neogroup.warp.controllers.ControllerComponent;
-import org.neogroup.warp.controllers.formatters.JsonFormatter;
+import org.neogroup.warp.formatters.JsonFormatter;
 import org.neogroup.warp.controllers.routing.After;
 import org.neogroup.warp.controllers.routing.Before;
 import org.neogroup.warp.controllers.routing.Error;

@@ -1,10 +1,7 @@
 package com.biometrics.api.v1;
 
 import com.biometrics.ResponseException;
-import com.biometrics.utils.AmazonUtils;
-import com.biometrics.utils.MRZUtils;
-import com.biometrics.utils.OpenCVUtils;
-import com.biometrics.utils.PDF417Utils;
+import com.biometrics.utils.*;
 import org.neogroup.warp.Request;
 import org.neogroup.warp.controllers.ControllerComponent;
 import org.neogroup.warp.controllers.routing.Body;
@@ -13,14 +10,13 @@ import org.neogroup.warp.controllers.routing.Post;
 import org.neogroup.warp.data.Data;
 import org.neogroup.warp.data.DataObject;
 import org.opencv.core.*;
-import org.opencv.features2d.FlannBasedMatcher;
-import org.opencv.features2d.SIFT;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 
-import java.util.*;
-
-import static org.opencv.imgproc.Imgproc.THRESH_BINARY;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 @ControllerComponent("v1")
 public class ApiController {
@@ -195,73 +191,29 @@ public class ApiController {
     }
 
     @Post("check_liveness_3d")
-    public DataObject checkLiveness3d(@Parameter("picture") byte[] imageBytes, @Parameter("zoomedPicture") byte[] zoomedImageBytes, @Parameter(value="debugMode",required=false) Boolean debugMode) {
-        if (debugMode == null) {
-            debugMode = false;
-        }
-        DataObject debugData = Data.object();
+    public DataObject checkLiveness3d(@Parameter("picture") byte[] imageBytes, @Parameter("zoomedPicture") byte[] zoomedImageBytes) {
         int livenessStatusCode = 0;
         Mat image = OpenCVUtils.getImage(imageBytes);
         Mat zoomedImage = OpenCVUtils.getImage(zoomedImageBytes);
-        if (debugMode) {
-            debugData.set("imageWidth", image.width());
-            debugData.set("imageHeight", image.height());
-            debugData.set("zoomedImageWidth", zoomedImage.width());
-            debugData.set("zoomedImageHeight", zoomedImage.height());
-        }
+
+        // Validación de que existen rostros en las 2 imagenes
         Rect faceRect = OpenCVUtils.detectBiggestFeatureRect(image, faceClassfier);
         Rect zoomedFaceRect = OpenCVUtils.detectBiggestFeatureRect(zoomedImage, faceClassfier);
         if (faceRect == null || zoomedFaceRect == null) {
             livenessStatusCode = 1;
         }
+
+        // Validación de que el rostro con zoom sea efectivamente más grande que el otro
         if (livenessStatusCode == 0) {
             double imageFaceArea = faceRect.area();
             double zoomedImageFaceArea = zoomedFaceRect.area();
-            if (debugMode) {
-                debugData.set("imageFaceArea", imageFaceArea);
-                debugData.set("zoomedImageFaceArea", zoomedImageFaceArea);
-            }
-            if (imageFaceArea >= zoomedImageFaceArea) {
+            if (imageFaceArea >= (0.9 * zoomedImageFaceArea)) {
                 livenessStatusCode = 2;
             }
         }
-        if (livenessStatusCode == 0 || debugMode) {
-            double imageBlurriness = OpenCVUtils.getBlurriness(image);
-            double zoomedImageBlurriness = OpenCVUtils.getBlurriness(zoomedImage);
-            if (debugMode) {
-                debugData.set("imageBlurriness", imageBlurriness);
-                debugData.set("zoomedImageBlurriness", zoomedImageBlurriness);
-            }
-            if (livenessStatusCode == 0 && imageBlurriness < 10 || zoomedImageBlurriness < 10) {
-                livenessStatusCode = 3;
-            }
-        }
-        if (livenessStatusCode == 0 || debugMode) {
-            Mat testImage = new Mat();
-            OpenCVUtils.grayScale(image, testImage);
-            Imgproc.threshold(testImage, testImage,200,255, THRESH_BINARY);
-            MatOfDouble mu = new MatOfDouble();
-            MatOfDouble sigma = new MatOfDouble();
-            Core.meanStdDev(testImage, mu, sigma);
-            double variance = Math.pow(sigma.get(0,0)[0], 2);
-            if (debugMode) {
-                debugData.set("imageBrightSpotVariance", variance);
-            }
-            if (livenessStatusCode == 0 && variance > 5000 && variance <= 8500) {
-                livenessStatusCode = 4;
-            }
-            OpenCVUtils.grayScale(zoomedImage, testImage);
-            Imgproc.threshold(testImage, testImage,200,255, THRESH_BINARY);
-            Core.meanStdDev(testImage, mu, sigma);
-            variance = Math.pow(sigma.get(0,0)[0], 2);
-            if (debugMode) {
-                debugData.set("zoomedImageBrightSpotVariance", variance);
-            }
-            if (livenessStatusCode == 0 && variance > 5000 && variance <= 8500) {
-                livenessStatusCode = 4;
-            }
-        }
-        if (livenessStatusCode == 0 || debugMode) {
+
+        // Validación de comparación de histogramas
+        if (livenessStatusCode == 0) {
             int[] histSize = { 50, 60 };
             float[] ranges = { 0, 180, 0, 256 };
             int[] channels = { 0, 1 };
@@ -270,67 +222,45 @@ public class ApiController {
             Mat zoomedImageHist = new Mat();
             Imgproc.calcHist(Arrays.asList(zoomedImage), new MatOfInt(channels), new Mat(), zoomedImageHist, new MatOfInt(histSize), new MatOfFloat(ranges), false);
             double histSimilarity = Imgproc.compareHist(imageHist, zoomedImageHist, Imgproc.HISTCMP_CORREL);
-            if (debugMode) {
-                debugData.set("imagesHistSimilarity", histSimilarity);
-            }
-            if (livenessStatusCode == 0 && histSimilarity < 0.75) {
-                livenessStatusCode = 5;
+            if (histSimilarity < 0.75) {
+                livenessStatusCode = 3;
             }
         }
-        if (livenessStatusCode == 0 || debugMode) {
-            SIFT sift = SIFT.create();
-            MatOfKeyPoint keypoints1 = new MatOfKeyPoint();
-            MatOfKeyPoint keypoints2 = new MatOfKeyPoint();
-            Mat descriptors1 = new Mat();
-            Mat descriptors2 = new Mat();
-            sift.detectAndCompute(image, new Mat(), keypoints1, descriptors1);
-            sift.detectAndCompute(zoomedImage, new Mat(), keypoints2, descriptors2);
-            FlannBasedMatcher matcher = new FlannBasedMatcher();
-            List<MatOfDMatch> matches = new ArrayList();
-            matcher.knnMatch(descriptors1, descriptors2, matches,  2);
-            LinkedList<DMatch> bestMatchesList = new LinkedList<>();
-            matches.forEach(match -> {
-                DMatch[] dmatcharray = match.toArray();
-                DMatch m1 = dmatcharray[0];
-                DMatch m2 = dmatcharray[1];
-                if (m1.distance <= m2.distance * 0.7) {
-                    bestMatchesList.addLast(m1);
-                }
-            });
-            if (debugMode) {
-                debugData.set("imagesSIFTMatchPoints", bestMatchesList.size());
-            }
-            if (livenessStatusCode == 0 && bestMatchesList.size() >= 50) {
-                livenessStatusCode = 6;
+
+        if (livenessStatusCode == 0) {
+            // Obtención de las imagenes del rostro
+            Mat faceImage = image.submat(faceRect);
+            Mat zoomedFaceImage = zoomedImage.submat(zoomedFaceRect);
+
+            // Normalización de las imagenes del rostro a una medida estandar
+            int normalizedSize = 400;
+            OpenCVUtils.resize(faceImage, faceImage, normalizedSize, normalizedSize, normalizedSize, normalizedSize);
+            OpenCVUtils.resize(zoomedFaceImage, zoomedFaceImage, normalizedSize, normalizedSize, normalizedSize, normalizedSize);
+
+            // Validación del grado de perturbaciones del patrón de Moire
+            double imageMoirePatternDisturbances = LivenessUtils.analyseMoirePatternDisturbances(faceImage);
+            double zoomedImageMoirePatternDisturbances = LivenessUtils.analyseMoirePatternDisturbances(zoomedFaceImage);
+            if (imageMoirePatternDisturbances > 0.3 || zoomedImageMoirePatternDisturbances > 0.2) {
+                livenessStatusCode = 4;
             }
 
-            /*System.out.println (bestMatchesList.size());
-            Mat matchImage = new Mat();
-            MatOfDMatch bestMatches = new MatOfDMatch();
-            bestMatches.fromList(bestMatchesList);
-            Features2d.drawMatches(image, keypoints1, zoomedImage, keypoints2, bestMatches, matchImage);
-            OpenCVUtils.display(matchImage);*/
-        }
-        if (livenessStatusCode == 0 || (debugMode && faceRect != null && zoomedFaceRect != null)) {
-            byte[] faceImageBytes = OpenCVUtils.getImageBytes(image.submat(faceRect));
-            byte[] zoomedFaceImageBytes = OpenCVUtils.getImageBytes(zoomedImage.submat(zoomedFaceRect));
-            float similarity = AmazonUtils.compareFaces(faceImageBytes, zoomedFaceImageBytes);
-            if (debugMode) {
-                debugData.set("facesSimilarity", similarity);
-            }
-            if (livenessStatusCode == 0 && similarity <= 0) {
-                livenessStatusCode = 7;
+            // Validación de que las 2 imagenes sean de la misma persona
+            if (livenessStatusCode == 0) {
+                byte[] faceImageBytes = OpenCVUtils.getImageBytes(image.submat(faceRect));
+                byte[] zoomedFaceImageBytes = OpenCVUtils.getImageBytes(zoomedImage.submat(zoomedFaceRect));
+                float similarity = AmazonUtils.compareFaces(faceImageBytes, zoomedFaceImageBytes);
+                if (similarity <= 0) {
+                    livenessStatusCode = 5;
+                }
             }
         }
+
         DataObject response = Data.object();
         if (livenessStatusCode == 0) {
             response.set(LIVENESS_PROPERTY_NAME, true);
         } else {
             response.set(LIVENESS_PROPERTY_NAME, false);
             response.set(REASON_PROPERTY_NAME, livenessStatusCode);
-        }
-        if (debugData.size() > 0) {
-            response.set("debugData", debugData);
         }
         return response;
     }
