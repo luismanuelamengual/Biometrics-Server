@@ -1,24 +1,45 @@
 package com.biometrics.utils;
 
-import org.opencv.core.Core;
-import org.opencv.core.Mat;
-import org.opencv.core.Point;
-import org.opencv.core.Size;
+import org.opencv.core.*;
 import org.opencv.imgproc.Imgproc;
 
 import java.util.*;
 
 import static org.opencv.core.CvType.CV_8U;
+import static org.opencv.imgproc.Imgproc.GC_INIT_WITH_RECT;
 
 public class LivenessUtils {
+
+    public static Mat getForegroundImage(Mat image) {
+        return getForegroundImage(image, new Mat());
+    }
+
+    public static Mat getForegroundImage(Mat image, Mat foregroundImageMask) {
+        int imageWidth = image.width();
+        int imageHeight = image.height();
+        int x = (int)(imageWidth * 0.05);
+        int y = (int)(imageHeight * 0.05);
+        int width = imageWidth - (x * 2);
+        int height = imageHeight - (y * 2);
+        Rect rect = new Rect(x, y, width, height);
+        return getForegroundImage(image, foregroundImageMask, rect);
+    }
+
+    public static Mat getForegroundImage(Mat image, Mat foregroundImageMask, Rect foregroundRect) {
+        Mat bgModel = new Mat();
+        Mat fgModel = new Mat();
+        Mat source = new Mat(1, 1, CvType.CV_8U, new Scalar(3));
+        Imgproc.grabCut(image, foregroundImageMask, foregroundRect, bgModel, fgModel,5, GC_INIT_WITH_RECT);
+        Core.compare(foregroundImageMask, source, foregroundImageMask, Core.CMP_EQ);
+        Mat foreground = new Mat(image.size(), CvType.CV_8UC3, new Scalar(255, 255, 255));
+        image.copyTo(foreground, foregroundImageMask);
+        return foreground;
+    }
 
     public static double analyseMoirePatternDisturbances(Mat image) {
         // Convertir la imagen a escala de grises
         Mat grayImage = new Mat();
         OpenCVUtils.grayScale(image, grayImage);
-
-        // Escalo la imagen a 400x400 para homogenizar las imagenes a una medida estandar
-        OpenCVUtils.resize(grayImage, grayImage, 400, 400, 400, 400);
 
         // Aplico una ventana de hanning para evitar problemas en los bordes de la imagen
         OpenCVUtils.hanningWindow(grayImage, grayImage);
@@ -93,9 +114,6 @@ public class LivenessUtils {
         // Convertir la imagen a escala de grises
         Mat grayImage = new Mat();
         OpenCVUtils.grayScale(image, grayImage);
-
-        // Escalo la imagen a 400x400 para homogenizar las imagenes a una medida estandar
-        OpenCVUtils.resize(grayImage, grayImage, 400, 400, 400, 400);
 
         // Iterar en diferentes bandas de frequencia para encontrar picos
         Mat dog1 = new Mat();

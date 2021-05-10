@@ -16,7 +16,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.opencv.core.CvType.*;
-import static org.opencv.imgproc.Imgproc.GC_INIT_WITH_RECT;
 
 public final class OpenCVUtils {
 
@@ -273,18 +272,6 @@ public final class OpenCVUtils {
         matrix.put(0, 2, matrix.get(0,2)[0] + translationX);
         matrix.put(1, 2, matrix.get(1,2)[0] + translationY);
         Imgproc.warpAffine(image, destinationImage, matrix, destinationSize, Imgproc.INTER_CUBIC, Core.BORDER_CONSTANT);
-    }
-
-    public static Mat getForeground(Mat image, Rect foregroundRectangle) {
-        Mat mask = new Mat();
-        Mat bgModel = new Mat();
-        Mat fgModel = new Mat();
-        Mat source = new Mat(1, 1, CvType.CV_8U, new Scalar(3));
-        Imgproc.grabCut(image, mask, foregroundRectangle, bgModel, fgModel,5, GC_INIT_WITH_RECT);
-        Core.compare(mask, source, mask, Core.CMP_EQ);
-        Mat foreground = new Mat(image.size(), CvType.CV_8UC3, new Scalar(255, 255, 255));
-        image.copyTo(foreground, mask);
-        return foreground;
     }
 
     public static Mat getLBP(Mat src) {
