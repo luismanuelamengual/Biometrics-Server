@@ -237,11 +237,18 @@ public class ApiController {
             OpenCVUtils.resize(faceImage, faceImage, normalizedSize, normalizedSize, normalizedSize, normalizedSize);
             OpenCVUtils.resize(zoomedFaceImage, zoomedFaceImage, normalizedSize, normalizedSize, normalizedSize, normalizedSize);
 
+            // Validación del grado de difuminación de las imagenes
+            double imageBlurriness = OpenCVUtils.getBlurriness(faceImage);
+            double zoomedImageBlurriness = OpenCVUtils.getBlurriness(zoomedFaceImage);
+            if (imageBlurriness >= zoomedImageBlurriness) {
+                livenessStatusCode = 4;
+            }
+
             // Validación del grado de perturbaciones del patrón de Moire
             double imageMoirePatternDisturbances = LivenessUtils.analyseMoirePatternDisturbances(faceImage);
             double zoomedImageMoirePatternDisturbances = LivenessUtils.analyseMoirePatternDisturbances(zoomedFaceImage);
             if (imageMoirePatternDisturbances > 0.3 || zoomedImageMoirePatternDisturbances > 0.2) {
-                livenessStatusCode = 4;
+                livenessStatusCode = 5;
             }
 
             // Validación de que las 2 imagenes sean de la misma persona
@@ -250,7 +257,7 @@ public class ApiController {
                 byte[] zoomedFaceImageBytes = OpenCVUtils.getImageBytes(zoomedImage.submat(zoomedFaceRect));
                 float similarity = AmazonUtils.compareFaces(faceImageBytes, zoomedFaceImageBytes);
                 if (similarity <= 0) {
-                    livenessStatusCode = 5;
+                    livenessStatusCode = 6;
                 }
             }
         }
