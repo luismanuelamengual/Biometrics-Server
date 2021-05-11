@@ -222,7 +222,7 @@ public class ApiController {
             Mat zoomedImageHist = new Mat();
             Imgproc.calcHist(Arrays.asList(zoomedImage), new MatOfInt(channels), new Mat(), zoomedImageHist, new MatOfInt(histSize), new MatOfFloat(ranges), false);
             double histSimilarity = Imgproc.compareHist(imageHist, zoomedImageHist, Imgproc.HISTCMP_CORREL);
-            if (histSimilarity < 0.75) {
+            if (histSimilarity < 0.5) {
                 livenessStatusCode = 3;
             }
         }
@@ -232,23 +232,11 @@ public class ApiController {
             Mat faceImage = image.submat(faceRect);
             Mat zoomedFaceImage = zoomedImage.submat(zoomedFaceRect);
 
-            // Normalización de las imagenes del rostro a una medida estandar
-            int normalizedSize = 400;
-            OpenCVUtils.resize(faceImage, faceImage, normalizedSize, normalizedSize, normalizedSize, normalizedSize);
-            OpenCVUtils.resize(zoomedFaceImage, zoomedFaceImage, normalizedSize, normalizedSize, normalizedSize, normalizedSize);
-
-            // Validación del grado de difuminación de las imagenes
-            double imageBlurriness = OpenCVUtils.getBlurriness(faceImage);
-            double zoomedImageBlurriness = OpenCVUtils.getBlurriness(zoomedFaceImage);
-            if (imageBlurriness >= zoomedImageBlurriness) {
-                livenessStatusCode = 4;
-            }
-
             // Validación del grado de perturbaciones del patrón de Moire
             double imageMoirePatternDisturbances = LivenessUtils.analyseMoirePatternDisturbances(faceImage);
             double zoomedImageMoirePatternDisturbances = LivenessUtils.analyseMoirePatternDisturbances(zoomedFaceImage);
-            if (imageMoirePatternDisturbances > 0.3 || zoomedImageMoirePatternDisturbances > 0.2) {
-                livenessStatusCode = 5;
+            if (imageMoirePatternDisturbances > 0.18 || zoomedImageMoirePatternDisturbances > 0.18) {
+                livenessStatusCode = 4;
             }
 
             // Validación de que las 2 imagenes sean de la misma persona
@@ -257,7 +245,7 @@ public class ApiController {
                 byte[] zoomedFaceImageBytes = OpenCVUtils.getImageBytes(zoomedImage.submat(zoomedFaceRect));
                 float similarity = AmazonUtils.compareFaces(faceImageBytes, zoomedFaceImageBytes);
                 if (similarity <= 0) {
-                    livenessStatusCode = 6;
+                    livenessStatusCode = 5;
                 }
             }
         }

@@ -83,7 +83,7 @@ public class LivenessTest extends BaseTest {
 
     @Test
     public void testLiveness15() {
-        testLivenessResponse("src/test/resources/liveness/liveness15/", false);
+        testLivenessResponse("src/test/resources/liveness/liveness15/", true);
     }
 
     @Test
@@ -172,8 +172,8 @@ public class LivenessTest extends BaseTest {
             byte[] imageBytes = FileUtils.readFileToByteArray(new File(livenessFolder + "image.jpeg"));
             byte[] zoomedImageBytes = FileUtils.readFileToByteArray(new File(livenessFolder + "zoomedImage.jpeg"));
             DataObject response = api.checkLiveness3d(imageBytes, zoomedImageBytes);
-            assertEquals(liveness, response.get("liveness"));
             System.out.println(response);
+            assertEquals(liveness, response.get("liveness"));
         } catch (Exception exception) {
             fail("Liveness test to folder \"" + livenessFolder + "\" failed !!");
         }
