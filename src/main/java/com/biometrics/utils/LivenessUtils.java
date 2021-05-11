@@ -48,14 +48,14 @@ public class LivenessUtils {
         Mat magnitudeSpectrum = OpenCVUtils.getMagnitudeSpectrum(grayImage);
 
         // Obtener todos los valores que hay en cada franja de distancia
-        int rows = grayImage.rows();
-        int cols = grayImage.cols();
+        int rows = magnitudeSpectrum.rows();
+        int cols = magnitudeSpectrum.cols();
         int midCols = (int)(cols / 2.0);
         int midRows = (int)(rows / 2.0);
         Map<Integer, List<Double>> pixelValuesByDistance = new HashMap<>();
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < midCols; col++) {
-                int pixelDistance = (int)Math.sqrt(Math.pow(midCols - col, 2) + Math.pow(midRows - row, 2));
+                int pixelDistance = (int) Math.sqrt(Math.pow(midCols - col, 2) + Math.pow(midRows - row, 2));
                 double pixelValue = magnitudeSpectrum.get(row, col)[0];
                 List<Double> pixelValuesAtDistance = pixelValuesByDistance.computeIfAbsent(pixelDistance, k -> new ArrayList<>());
                 pixelValuesAtDistance.add(pixelValue);
@@ -135,8 +135,8 @@ public class LivenessUtils {
             magnitudeSpectrum = OpenCVUtils.getMagnitudeSpectrum(dog);
 
             // Obtener todos los valores que hay en cada franja de distancia
-            int rows = grayImage.rows();
-            int cols = grayImage.cols();
+            int rows = magnitudeSpectrum.rows();
+            int cols = magnitudeSpectrum.cols();
             int midCols = (int)(cols / 2.0);
             int midRows = (int)(rows / 2.0);
             Map<Integer, List<Double>> pixelValuesByDistance = new HashMap<>();
