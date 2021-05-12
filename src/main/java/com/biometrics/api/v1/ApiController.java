@@ -18,6 +18,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import static org.opencv.core.Core.NORM_MINMAX;
+
 @ControllerComponent("v1")
 public class ApiController {
 
@@ -169,7 +171,7 @@ public class ApiController {
             byte[] imageBytes = request.get("image" + (i + 1), byte[].class);
             Mat image = OpenCVUtils.getImage(imageBytes);
             Imgproc.calcHist(Arrays.asList(image), new MatOfInt(channels), new Mat(), image, new MatOfInt(histSize), new MatOfFloat(ranges), false);
-            Core.normalize(image, image, 0, 1, Core.NORM_MINMAX);
+            Core.normalize(image, image, 0, 1, NORM_MINMAX);
             imagesHist.add(image);
             imageBytesList.add(imageBytes);
         }
@@ -212,6 +214,15 @@ public class ApiController {
             }
         }
 
+        // Validación de calidad de las imagenes
+        if (livenessStatusCode == 0) {
+            double imageQuality = LivenessUtils.getImageQuality(image);
+            double zoomedImageQuality = LivenessUtils.getImageQuality(zoomedImage);
+            if (imageQuality < 95 || zoomedImageQuality < 95) {
+                livenessStatusCode = 3;
+            }
+        }
+
         // Validación de comparación de histogramas
         if (livenessStatusCode == 0) {
             int[] histSize = { 50, 60 };
@@ -222,8 +233,8 @@ public class ApiController {
             Mat zoomedImageHist = new Mat();
             Imgproc.calcHist(Arrays.asList(zoomedImage), new MatOfInt(channels), new Mat(), zoomedImageHist, new MatOfInt(histSize), new MatOfFloat(ranges), false);
             double histSimilarity = Imgproc.compareHist(imageHist, zoomedImageHist, Imgproc.HISTCMP_CORREL);
-            if (histSimilarity < 0.5) {
-                livenessStatusCode = 3;
+            if (histSimilarity < 0.4) {
+                livenessStatusCode = 4;
             }
         }
 
@@ -231,22 +242,17 @@ public class ApiController {
             // Obtención de las imagenes del rostro
             Mat faceImage = image.submat(faceRect);
             Mat zoomedFaceImage = zoomedImage.submat(zoomedFaceRect);
+            int imagesSize = 400;
+            Mat normalizedFaceImage = new Mat();
+            Mat normalizedZoomedFaceImage = new Mat();
+            OpenCVUtils.resize(faceImage, normalizedFaceImage, imagesSize, imagesSize, imagesSize, imagesSize);
+            OpenCVUtils.resize(zoomedFaceImage, normalizedZoomedFaceImage, imagesSize, imagesSize, imagesSize, imagesSize);
 
             // Validación del grado de perturbaciones del patrón de Moire
             double imageMoirePatternDisturbances = LivenessUtils.analyseMoirePatternDisturbances(faceImage);
             double zoomedImageMoirePatternDisturbances = LivenessUtils.analyseMoirePatternDisturbances(zoomedFaceImage);
-            if (imageMoirePatternDisturbances > 0.18 || zoomedImageMoirePatternDisturbances > 0.18) {
-                livenessStatusCode = 4;
-            }
-
-            // Validación de que las 2 imagenes sean de la misma persona
-            if (livenessStatusCode == 0) {
-                byte[] faceImageBytes = OpenCVUtils.getImageBytes(image.submat(faceRect));
-                byte[] zoomedFaceImageBytes = OpenCVUtils.getImageBytes(zoomedImage.submat(zoomedFaceRect));
-                float similarity = AmazonUtils.compareFaces(faceImageBytes, zoomedFaceImageBytes);
-                if (similarity <= 0) {
-                    livenessStatusCode = 5;
-                }
+            if (imageMoirePatternDisturbances > 0.3 || zoomedImageMoirePatternDisturbances > 0.3) {
+                livenessStatusCode = 5;
             }
         }
 

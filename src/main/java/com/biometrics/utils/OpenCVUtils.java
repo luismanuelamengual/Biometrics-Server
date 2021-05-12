@@ -340,11 +340,26 @@ public final class OpenCVUtils {
         return mag;
     }
 
-    public static Mat getHistogram(Mat image) {
-        return getHistogram(image, 0, 1000, 500, Color.RED);
+    public static double[] getHistogramValues(Mat image) {
+        return getHistogramValues(image, 0);
     }
 
-    public static Mat getHistogram(Mat image, int channel, int histWidth, int histHeight, Color color) {
+    public static double[] getHistogramValues(Mat image, int channel) {
+        int histSize = 256;
+        double[] histogramValues = new double[histSize];
+        Mat histogram = new Mat();
+        Imgproc.calcHist(Arrays.asList(image), new MatOfInt(channel), new Mat(), histogram, new MatOfInt(histSize), new MatOfFloat(0, 255), false);
+        for (int i = 0; i < histSize; i++) {
+            histogramValues[i] = histogram.get(i, 0)[0];
+        }
+        return histogramValues;
+    }
+
+    public static Mat getHistogramImage(Mat image) {
+        return getHistogramImage(image, 0, 1000, 500, Color.RED);
+    }
+
+    public static Mat getHistogramImage(Mat image, int channel, int histWidth, int histHeight, Color color) {
         Mat histogram = new Mat();
         int histSize = 256;
         Scalar scalar = getScalarFromColor(color);

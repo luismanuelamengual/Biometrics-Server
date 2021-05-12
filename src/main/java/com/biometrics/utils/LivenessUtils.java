@@ -14,6 +14,19 @@ public class LivenessUtils {
         return getForegroundImage(image, new Mat());
     }
 
+    public static double getImageQuality(Mat image) {
+        Mat hsvImage = new Mat();
+        Imgproc.cvtColor(image, hsvImage, Imgproc.COLOR_BGR2HSV);
+        double[] valueValues = OpenCVUtils.getHistogramValues(hsvImage, 2);
+        int activeValuesCounter = 0;
+        for (int i = 0; i < 256; i++) {
+            if (valueValues[i] > 0) {
+                activeValuesCounter++;
+            }
+        }
+        return activeValuesCounter * 100.0 / 256.0;
+    }
+
     public static Mat getForegroundImage(Mat image, Mat foregroundImageMask) {
         int imageWidth = image.width();
         int imageHeight = image.height();
