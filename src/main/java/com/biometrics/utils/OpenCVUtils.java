@@ -275,6 +275,10 @@ public final class OpenCVUtils {
     }
 
     public static Mat getLBP(Mat src) {
+        return getLBP(src, false);
+    }
+
+    public static Mat getLBP(Mat src, boolean onlyUniformPatters) {
         Mat lbp = Mat.zeros(src.size(), CV_8U);
         int rows = src.rows();
         int cols = src.cols();
@@ -284,17 +288,29 @@ public final class OpenCVUtils {
             for (int col = 0; col < cols; col++) {
                 double centerValue = src.get(row, col)[0];
                 double newCenterValue = 0;
+                boolean lastValueActive = false;
+                int valueTransitions = -1;
                 for (int offset = 0; offset < 8; offset++) {
                     int offsetRow = row + rowOffsets[offset];
                     int offsetCol = col + colOffsets[offset];
                     if (offsetRow > 0 && offsetCol > 0 && offsetRow < rows && offsetCol < cols) {
                         double offsetValue = src.get(offsetRow, offsetCol)[0];
-                        if (offsetValue >= centerValue) {
+                        boolean valueActive = offsetValue >= centerValue;
+                        if (valueActive) {
                             newCenterValue += Math.pow(2, offset);
+                        }
+                        if (valueActive != lastValueActive || valueTransitions < 0) {
+                            lastValueActive = valueActive;
+                            valueTransitions++;
                         }
                     }
                 }
-                lbp.put(row, col, newCenterValue);
+                boolean isUniformPattern = valueTransitions <= 2;
+                if (onlyUniformPatters) {
+                    lbp.put(row, col, isUniformPattern ? newCenterValue : 0);
+                } else {
+                    lbp.put(row, col, newCenterValue);
+                }
             }
         }
         return lbp;
