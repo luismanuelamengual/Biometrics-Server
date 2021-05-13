@@ -274,6 +274,46 @@ public final class OpenCVUtils {
         Imgproc.warpAffine(image, destinationImage, matrix, destinationSize, Imgproc.INTER_CUBIC, Core.BORDER_CONSTANT);
     }
 
+    public static Mat getMagnitudeSpectrum(Mat image) {
+        List<Mat> planes = new ArrayList<>();
+        Mat complexImage = new Mat();
+        Mat padded = new Mat();
+        int addPixelRows = Core.getOptimalDFTSize(image.rows());
+        int addPixelCols = Core.getOptimalDFTSize(image.cols());
+        Core.copyMakeBorder(image, padded, 0, addPixelRows - image.rows(), 0, addPixelCols - image.cols(), Core.BORDER_CONSTANT, Scalar.all(0));
+        padded.convertTo(padded, CvType.CV_32F);
+        planes.add(padded);
+        planes.add(Mat.zeros(padded.size(), CvType.CV_32F));
+        Core.merge(planes, complexImage);
+        Core.dft(complexImage, complexImage);
+
+        List<Mat> newPlanes = new ArrayList<>();
+        Mat mag = new Mat();
+        Core.split(complexImage, newPlanes);
+        Core.magnitude(newPlanes.get(0), newPlanes.get(1), mag);
+        Core.add(Mat.ones(mag.size(), CvType.CV_32F), mag, mag);
+        Core.log(mag, mag);
+
+        mag = mag.submat(new Rect(0, 0, mag.cols() & -2, mag.rows() & -2));
+        int cx = mag.cols() / 2;
+        int cy = mag.rows() / 2;
+        Mat q0 = new Mat(mag, new Rect(0, 0, cx, cy));
+        Mat q1 = new Mat(mag, new Rect(cx, 0, cx, cy));
+        Mat q2 = new Mat(mag, new Rect(0, cy, cx, cy));
+        Mat q3 = new Mat(mag, new Rect(cx, cy, cx, cy));
+        Mat tmp = new Mat();
+        q0.copyTo(tmp);
+        q3.copyTo(q0);
+        tmp.copyTo(q3);
+        q1.copyTo(tmp);
+        q2.copyTo(q1);
+        tmp.copyTo(q2);
+
+        mag.convertTo(mag, CvType.CV_8UC1);
+        Core.normalize(mag, mag, 0, 255, Core.NORM_MINMAX, CvType.CV_8UC1);
+        return mag;
+    }
+
     public static Mat getLBP(Mat src) {
         return getLBP(src, false);
     }
@@ -316,51 +356,62 @@ public final class OpenCVUtils {
         return lbp;
     }
 
-    public static Mat getMagnitudeSpectrum(Mat image) {
-        List<Mat> planes = new ArrayList<>();
-        Mat complexImage = new Mat();
-        Mat padded = new Mat();
-        int addPixelRows = Core.getOptimalDFTSize(image.rows());
-        int addPixelCols = Core.getOptimalDFTSize(image.cols());
-        Core.copyMakeBorder(image, padded, 0, addPixelRows - image.rows(), 0, addPixelCols - image.cols(), Core.BORDER_CONSTANT, Scalar.all(0));
-        padded.convertTo(padded, CvType.CV_32F);
-        planes.add(padded);
-        planes.add(Mat.zeros(padded.size(), CvType.CV_32F));
-        Core.merge(planes, complexImage);
-        Core.dft(complexImage, complexImage);
-
-        List<Mat> newPlanes = new ArrayList<>();
-        Mat mag = new Mat();
-        Core.split(complexImage, newPlanes);
-        Core.magnitude(newPlanes.get(0), newPlanes.get(1), mag);
-        Core.add(Mat.ones(mag.size(), CvType.CV_32F), mag, mag);
-        Core.log(mag, mag);
-
-        mag = mag.submat(new Rect(0, 0, mag.cols() & -2, mag.rows() & -2));
-        int cx = mag.cols() / 2;
-        int cy = mag.rows() / 2;
-        Mat q0 = new Mat(mag, new Rect(0, 0, cx, cy));
-        Mat q1 = new Mat(mag, new Rect(cx, 0, cx, cy));
-        Mat q2 = new Mat(mag, new Rect(0, cy, cx, cy));
-        Mat q3 = new Mat(mag, new Rect(cx, cy, cx, cy));
-        Mat tmp = new Mat();
-        q0.copyTo(tmp);
-        q3.copyTo(q0);
-        tmp.copyTo(q3);
-        q1.copyTo(tmp);
-        q2.copyTo(q1);
-        tmp.copyTo(q2);
-
-        mag.convertTo(mag, CvType.CV_8UC1);
-        Core.normalize(mag, mag, 0, 255, Core.NORM_MINMAX, CvType.CV_8UC1);
-        return mag;
+    public static double[] getLBPVHistogram(Mat image, boolean onlyUniformPatters) {
+        double[] LBPVHistogram = new double[256];
+        int rows = image.rows();
+        int cols = image.cols();
+        int[] rowOffsets = {-1, 0, 1, 1, 1, 0, -1, -1};
+        int[] colOffsets = {-1, -1, -1, 0, 1, 1, 1, 0};
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                double centerValue = image.get(row, col)[0];
+                double newCenterValue = 0;
+                boolean lastValueActive = false;
+                int valueTransitions = -1;
+                double valuesSum = 0;
+                int valuesCount = 0;
+                for (int offset = 0; offset < 8; offset++) {
+                    int offsetRow = row + rowOffsets[offset];
+                    int offsetCol = col + colOffsets[offset];
+                    if (offsetRow > 0 && offsetCol > 0 && offsetRow < rows && offsetCol < cols) {
+                        double offsetValue = image.get(offsetRow, offsetCol)[0];
+                        valuesSum += offsetValue;
+                        valuesCount++;
+                        boolean valueActive = offsetValue >= centerValue;
+                        if (valueActive) {
+                            newCenterValue += Math.pow(2, offset);
+                        }
+                        if (valueActive != lastValueActive || valueTransitions < 0) {
+                            lastValueActive = valueActive;
+                            valueTransitions++;
+                        }
+                    }
+                }
+                double valuesAverage = valuesSum / valuesCount;
+                double varianceSum = 0;
+                for (int offset = 0; offset < 8; offset++) {
+                    int offsetRow = row + rowOffsets[offset];
+                    int offsetCol = col + colOffsets[offset];
+                    if (offsetRow > 0 && offsetCol > 0 && offsetRow < rows && offsetCol < cols) {
+                        double offsetValue = image.get(offsetRow, offsetCol)[0];
+                        varianceSum += Math.pow(offsetValue - valuesAverage, 2);
+                    }
+                }
+                double valuesVariance = varianceSum / valuesCount;
+                boolean isUniformPattern = valueTransitions <= 2;
+                if (!onlyUniformPatters || isUniformPattern) {
+                    LBPVHistogram[(int)newCenterValue] += valuesVariance;
+                }
+            }
+        }
+        return LBPVHistogram;
     }
 
-    public static double[] getHistogramValues(Mat image) {
-        return getHistogramValues(image, 0);
+    public static double[] getHistogram(Mat image) {
+        return getHistogram(image, 0);
     }
 
-    public static double[] getHistogramValues(Mat image, int channel) {
+    public static double[] getHistogram(Mat image, int channel) {
         int histSize = 256;
         double[] histogramValues = new double[histSize];
         Mat histogram = new Mat();
@@ -371,20 +422,18 @@ public final class OpenCVUtils {
         return histogramValues;
     }
 
-    public static Mat getHistogramImage(Mat image) {
-        return getHistogramImage(image, 0, 1000, 500, Color.RED);
-    }
-
-    public static Mat getHistogramImage(Mat image, int channel, int histWidth, int histHeight, Color color) {
-        Mat histogram = new Mat();
-        int histSize = 256;
+    public static Mat createHistogramImage (double[] histogramValues, int histWidth, int histHeight, Color color) {
         Scalar scalar = getScalarFromColor(color);
-        Imgproc.calcHist(Arrays.asList(image), new MatOfInt(channel), new Mat(), histogram, new MatOfInt(histSize), new MatOfFloat(0, 255), false);
-        Core.MinMaxLocResult result = Core.minMaxLoc(histogram);
-        double maxValue = result.maxVal;
         Mat histogramImage = Mat.zeros(histHeight, histWidth, CV_8UC3);
+        double maxValue = 0;
+        int histSize = histogramValues.length;
         for (int i = 0; i < histSize; i++) {
-            double value = histogram.get(i, 0)[0] * histHeight / maxValue;
+            if (histogramValues[i] > maxValue) {
+                maxValue = histogramValues[i];
+            }
+        }
+        for (int i = 0; i < histSize; i++) {
+            double value = histogramValues[i] * histHeight / maxValue;
             Point point1 = new Point(i * (double)histWidth / (double)histSize, histHeight - 1);
             Point point2 = new Point(((i + 1) * (double)histWidth / (double)histSize) - 1, histHeight - value);
             Imgproc.rectangle(histogramImage, point1, point2, scalar, Imgproc.FILLED);
