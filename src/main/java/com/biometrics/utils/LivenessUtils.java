@@ -14,19 +14,6 @@ public class LivenessUtils {
         return getForegroundImage(image, new Mat());
     }
 
-    public static double getImageQuality(Mat image) {
-        Mat hsvImage = new Mat();
-        Imgproc.cvtColor(image, hsvImage, Imgproc.COLOR_BGR2HSV);
-        double[] valueValues = OpenCVUtils.getHistogramValues(hsvImage, 2);
-        int activeValuesCounter = 0;
-        for (int i = 0; i < 256; i++) {
-            if (valueValues[i] > 0) {
-                activeValuesCounter++;
-            }
-        }
-        return activeValuesCounter * 100.0 / 256.0;
-    }
-
     public static Mat getForegroundImage(Mat image, Mat foregroundImageMask) {
         int imageWidth = image.width();
         int imageHeight = image.height();
@@ -47,6 +34,19 @@ public class LivenessUtils {
         Mat foreground = new Mat(image.size(), CvType.CV_8UC3, new Scalar(255, 255, 255));
         image.copyTo(foreground, foregroundImageMask);
         return foreground;
+    }
+
+    public static double analyseImageQuality(Mat image) {
+        Mat hsvImage = new Mat();
+        Imgproc.cvtColor(image, hsvImage, Imgproc.COLOR_BGR2HSV);
+        double[] valueValues = OpenCVUtils.getHistogram(hsvImage, 2);
+        int activeValuesCounter = 0;
+        for (int i = 0; i < 256; i++) {
+            if (valueValues[i] > 0) {
+                activeValuesCounter++;
+            }
+        }
+        return activeValuesCounter / 256.0;
     }
 
     public static double analyseMoirePatternDisturbances(Mat image) {

@@ -216,9 +216,9 @@ public class ApiController {
 
         // Validación de calidad de las imagenes
         if (livenessStatusCode == 0) {
-            double imageQuality = LivenessUtils.getImageQuality(image);
-            double zoomedImageQuality = LivenessUtils.getImageQuality(zoomedImage);
-            if (imageQuality < 95 || zoomedImageQuality < 95) {
+            double imageQuality = LivenessUtils.analyseImageQuality(image);
+            double zoomedImageQuality = LivenessUtils.analyseImageQuality(zoomedImage);
+            if (imageQuality < 0.95 || zoomedImageQuality < 0.95) {
                 livenessStatusCode = 3;
             }
         }
