@@ -387,19 +387,19 @@ public final class OpenCVUtils {
                         }
                     }
                 }
-                double valuesAverage = valuesSum / valuesCount;
-                double varianceSum = 0;
-                for (int offset = 0; offset < 8; offset++) {
-                    int offsetRow = row + rowOffsets[offset];
-                    int offsetCol = col + colOffsets[offset];
-                    if (offsetRow > 0 && offsetCol > 0 && offsetRow < rows && offsetCol < cols) {
-                        double offsetValue = image.get(offsetRow, offsetCol)[0];
-                        varianceSum += Math.pow(offsetValue - valuesAverage, 2);
-                    }
-                }
-                double valuesVariance = varianceSum / valuesCount;
                 boolean isUniformPattern = valueTransitions <= 2;
                 if (!onlyUniformPatters || isUniformPattern) {
+                    double valuesAverage = valuesSum / valuesCount;
+                    double varianceSum = 0;
+                    for (int offset = 0; offset < 8; offset++) {
+                        int offsetRow = row + rowOffsets[offset];
+                        int offsetCol = col + colOffsets[offset];
+                        if (offsetRow > 0 && offsetCol > 0 && offsetRow < rows && offsetCol < cols) {
+                            double offsetValue = image.get(offsetRow, offsetCol)[0];
+                            varianceSum += Math.pow(offsetValue - valuesAverage, 2);
+                        }
+                    }
+                    double valuesVariance = varianceSum / valuesCount;
                     LBPVHistogram[(int)newCenterValue] += valuesVariance;
                 }
             }
