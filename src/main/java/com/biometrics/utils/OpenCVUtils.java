@@ -315,24 +315,24 @@ public final class OpenCVUtils {
     }
 
     public static Mat getLBP(Mat src) {
-        return getLBP(src, false);
+        return getLBP(src, 8, 1, false);
     }
 
-    public static Mat getLBP(Mat src, boolean onlyUniformPatters) {
+    public static Mat getLBP(Mat src, int pointsCount, int radius, boolean onlyUniformPatters) {
         Mat lbp = Mat.zeros(src.size(), CV_8U);
+        double circunferenceSize = Math.PI * 2;
         int rows = src.rows();
         int cols = src.cols();
-        int[] rowOffsets = {-1, 0, 1, 1, 1, 0, -1, -1};
-        int[] colOffsets = {-1, -1, -1, 0, 1, 1, 1, 0};
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
                 double centerValue = src.get(row, col)[0];
                 double newCenterValue = 0;
                 boolean lastValueActive = false;
                 int valueTransitions = -1;
-                for (int offset = 0; offset < 8; offset++) {
-                    int offsetRow = row + rowOffsets[offset];
-                    int offsetCol = col + colOffsets[offset];
+                int offset = 0;
+                for (double radians = 0; radians < circunferenceSize; radians += (circunferenceSize / pointsCount)) {
+                    int offsetCol = (int) Math.round(radius * Math.cos(radians) + col);
+                    int offsetRow = (int) Math.round(radius * Math.sin(radians) + row);
                     if (offsetRow > 0 && offsetCol > 0 && offsetRow < rows && offsetCol < cols) {
                         double offsetValue = src.get(offsetRow, offsetCol)[0];
                         boolean valueActive = offsetValue >= centerValue;
@@ -344,11 +344,10 @@ public final class OpenCVUtils {
                             valueTransitions++;
                         }
                     }
+                    offset++;
                 }
                 boolean isUniformPattern = valueTransitions <= 2;
-                if (onlyUniformPatters) {
-                    lbp.put(row, col, isUniformPattern ? newCenterValue : 0);
-                } else {
+                if (!onlyUniformPatters || isUniformPattern) {
                     lbp.put(row, col, newCenterValue);
                 }
             }
@@ -356,12 +355,11 @@ public final class OpenCVUtils {
         return lbp;
     }
 
-    public static double[] getLBPVHistogram(Mat image, boolean onlyUniformPatters) {
+    public static double[] getLBPVHistogram(Mat image, int pointsCount, int radius, boolean onlyUniformPatters) {
         double[] LBPVHistogram = new double[256];
+        double circunferenceSize = Math.PI * 2;
         int rows = image.rows();
         int cols = image.cols();
-        int[] rowOffsets = {-1, 0, 1, 1, 1, 0, -1, -1};
-        int[] colOffsets = {-1, -1, -1, 0, 1, 1, 1, 0};
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
                 double centerValue = image.get(row, col)[0];
@@ -370,9 +368,10 @@ public final class OpenCVUtils {
                 int valueTransitions = -1;
                 double valuesSum = 0;
                 int valuesCount = 0;
-                for (int offset = 0; offset < 8; offset++) {
-                    int offsetRow = row + rowOffsets[offset];
-                    int offsetCol = col + colOffsets[offset];
+                int offset = 0;
+                for (double radians = 0; radians < circunferenceSize; radians += (circunferenceSize / pointsCount)) {
+                    int offsetCol = (int) Math.round(radius * Math.cos(radians) + col);
+                    int offsetRow = (int) Math.round(radius * Math.sin(radians) + row);
                     if (offsetRow > 0 && offsetCol > 0 && offsetRow < rows && offsetCol < cols) {
                         double offsetValue = image.get(offsetRow, offsetCol)[0];
                         valuesSum += offsetValue;
@@ -386,14 +385,15 @@ public final class OpenCVUtils {
                             valueTransitions++;
                         }
                     }
+                    offset++;
                 }
                 boolean isUniformPattern = valueTransitions <= 2;
                 if (!onlyUniformPatters || isUniformPattern) {
                     double valuesAverage = valuesSum / valuesCount;
                     double varianceSum = 0;
-                    for (int offset = 0; offset < 8; offset++) {
-                        int offsetRow = row + rowOffsets[offset];
-                        int offsetCol = col + colOffsets[offset];
+                    for (double radians = 0; radians < circunferenceSize; radians += (circunferenceSize / pointsCount)) {
+                        int offsetCol = (int) Math.round(radius * Math.cos(radians) + col);
+                        int offsetRow = (int) Math.round(radius * Math.sin(radians) + row);
                         if (offsetRow > 0 && offsetCol > 0 && offsetRow < rows && offsetCol < cols) {
                             double offsetValue = image.get(offsetRow, offsetCol)[0];
                             varianceSum += Math.pow(offsetValue - valuesAverage, 2);
