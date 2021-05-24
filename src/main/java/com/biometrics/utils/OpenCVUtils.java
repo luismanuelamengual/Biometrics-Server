@@ -357,55 +357,48 @@ public final class OpenCVUtils {
     }
 
     public static double[] getLBPVHistogram(Mat image, int pointsCount, int radius, boolean onlyUniformPatters) {
-        double[] LBPVHistogram = new double[256];
-        double circunferenceSize = Math.PI * 2;
+        double[] histogram = new double[256];
+        double degreesDelta = (Math.PI * 2) / pointsCount;
         int rows = image.rows();
         int cols = image.cols();
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
                 double centerValue = image.get(row, col)[0];
-                double newCenterValue = 0;
-                boolean lastValueActive = false;
-                int valueTransitions = -1;
-                double valuesSum = 0;
-                int valuesCount = 0;
-                int offset = 0;
-                for (double radians = 0; radians < circunferenceSize; radians += (circunferenceSize / pointsCount)) {
+                double[] neighborValues = new double[pointsCount];
+                for (int index = 0; index < pointsCount; index++) {
+                    double radians = index * degreesDelta;
                     int offsetCol = (int) Math.round(radius * Math.cos(radians) + col);
                     int offsetRow = (int) Math.round(radius * Math.sin(radians) + row);
-                    if (offsetRow > 0 && offsetCol > 0 && offsetRow < rows && offsetCol < cols) {
-                        double offsetValue = image.get(offsetRow, offsetCol)[0];
-                        valuesSum += offsetValue;
-                        valuesCount++;
-                        boolean valueActive = offsetValue >= centerValue;
-                        if (valueActive) {
-                            newCenterValue += Math.pow(2, offset);
-                        }
-                        if (valueActive != lastValueActive || valueTransitions < 0) {
-                            lastValueActive = valueActive;
-                            valueTransitions++;
-                        }
+                    neighborValues[index] = (offsetRow > 0 && offsetCol > 0 && offsetRow < rows && offsetCol < cols)? image.get(offsetRow, offsetCol)[0] : centerValue;
+                }
+                double newCenterValue = 0;
+                boolean lastValueActive = false;
+                int valueTransitions = 0;
+                for (int index = 0; index < pointsCount; index++) {
+                    double neighborValue = neighborValues[index];
+                    boolean valueActive = neighborValue > centerValue;
+                    if (valueActive) {
+                        newCenterValue += Math.pow(2, index);
                     }
-                    offset++;
+                    if (index > 0 && valueActive != lastValueActive) {
+                        valueTransitions++;
+                    }
+                    lastValueActive = valueActive;
                 }
                 boolean isUniformPattern = valueTransitions <= 2;
                 if (!onlyUniformPatters || isUniformPattern) {
-                    double valuesAverage = valuesSum / valuesCount;
-                    double varianceSum = 0;
-                    for (double radians = 0; radians < circunferenceSize; radians += (circunferenceSize / pointsCount)) {
-                        int offsetCol = (int) Math.round(radius * Math.cos(radians) + col);
-                        int offsetRow = (int) Math.round(radius * Math.sin(radians) + row);
-                        if (offsetRow > 0 && offsetCol > 0 && offsetRow < rows && offsetCol < cols) {
-                            double offsetValue = image.get(offsetRow, offsetCol)[0];
-                            varianceSum += Math.pow(offsetValue - valuesAverage, 2);
-                        }
+                    double neighborValuesAverage = Arrays.stream(neighborValues).average().getAsDouble();
+                    double neighborValuesVarianceSum = 0;
+                    for (int index = 0; index < pointsCount; index++) {
+                        double neighborValue = neighborValues[index];
+                        neighborValuesVarianceSum += Math.pow(neighborValue - neighborValuesAverage, 2);
                     }
-                    double valuesVariance = varianceSum / valuesCount;
-                    LBPVHistogram[(int)newCenterValue] += valuesVariance;
+                    double neighborValuesVariance = neighborValuesVarianceSum / pointsCount;
+                    histogram[(int)newCenterValue] = neighborValuesVariance;
                 }
             }
         }
-        return LBPVHistogram;
+        return histogram;
     }
 
     public static double[] getHistogram(Mat image) {
