@@ -314,37 +314,38 @@ public final class OpenCVUtils {
         return mag;
     }
 
-    public static Mat getLBP(Mat src) {
-        return getLBP(src, 8, 1, false);
+    public static double[] getLBPHistogram(Mat src) {
+        return getLBPHistogram(src, 8, 1, false);
     }
 
-    public static Mat getLBP(Mat src, int pointsCount, int radius, boolean onlyUniformPatters) {
+    public static double[] getLBPHistogram(Mat src, int pointsCount, int radius, boolean onlyUniformPatters) {
         Mat lbp = Mat.zeros(src.size(), CV_8U);
-        double circunferenceSize = Math.PI * 2;
+        double degreesDelta = (Math.PI * 2) / pointsCount;
         int rows = src.rows();
         int cols = src.cols();
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
                 double centerValue = src.get(row, col)[0];
-                double newCenterValue = 0;
-                boolean lastValueActive = false;
-                int valueTransitions = -1;
-                int offset = 0;
-                for (double radians = 0; radians < circunferenceSize; radians += (circunferenceSize / pointsCount)) {
+                double[] neighborValues = new double[pointsCount];
+                for (int index = 0; index < pointsCount; index++) {
+                    double radians = index * degreesDelta;
                     int offsetCol = (int) Math.round(radius * Math.cos(radians) + col);
                     int offsetRow = (int) Math.round(radius * Math.sin(radians) + row);
-                    if (offsetRow > 0 && offsetCol > 0 && offsetRow < rows && offsetCol < cols) {
-                        double offsetValue = src.get(offsetRow, offsetCol)[0];
-                        boolean valueActive = offsetValue >= centerValue;
-                        if (valueActive) {
-                            newCenterValue += Math.pow(2, offset);
-                        }
-                        if (valueActive != lastValueActive || valueTransitions < 0) {
-                            lastValueActive = valueActive;
-                            valueTransitions++;
-                        }
+                    neighborValues[index] = (offsetRow > 0 && offsetCol > 0 && offsetRow < rows && offsetCol < cols)? src.get(offsetRow, offsetCol)[0] : centerValue;
+                }
+                double newCenterValue = 0;
+                boolean lastValueActive = false;
+                int valueTransitions = 0;
+                for (int index = 0; index < pointsCount; index++) {
+                    double neighborValue = neighborValues[index];
+                    boolean valueActive = neighborValue >= centerValue;
+                    if (valueActive) {
+                        newCenterValue += Math.pow(2, index);
                     }
-                    offset++;
+                    if (index > 0 && valueActive != lastValueActive) {
+                        valueTransitions++;
+                    }
+                    lastValueActive = valueActive;
                 }
                 boolean isUniformPattern = valueTransitions <= 2;
                 if (!onlyUniformPatters || isUniformPattern) {
@@ -352,7 +353,7 @@ public final class OpenCVUtils {
                 }
             }
         }
-        return lbp;
+        return getHistogram(lbp);
     }
 
     public static double[] getLBPVHistogram(Mat image, int pointsCount, int radius, boolean onlyUniformPatters) {
@@ -415,14 +416,18 @@ public final class OpenCVUtils {
         int histSize = 256;
         double[] histogramValues = new double[histSize];
         Mat histogram = new Mat();
-        Imgproc.calcHist(Arrays.asList(image), new MatOfInt(channel), new Mat(), histogram, new MatOfInt(histSize), new MatOfFloat(0, 255), false);
+        Imgproc.calcHist(Arrays.asList(image), new MatOfInt(channel), new Mat(), histogram, new MatOfInt(histSize), new MatOfFloat(0, histSize - 1), false);
         for (int i = 0; i < histSize; i++) {
             histogramValues[i] = histogram.get(i, 0)[0];
         }
         return histogramValues;
     }
 
-    public static Mat createHistogramImage (double[] histogramValues, int histWidth, int histHeight, Color color) {
+    public static void displayHistogram (double[] histogramValues) {
+        displayHistogram (histogramValues, 600, 400, Color.RED);
+    }
+
+    public static void displayHistogram (double[] histogramValues, int histWidth, int histHeight, Color color) {
         Scalar scalar = getScalarFromColor(color);
         Mat histogramImage = Mat.zeros(histHeight, histWidth, CV_8UC3);
         double maxValue = 0;
@@ -438,7 +443,7 @@ public final class OpenCVUtils {
             Point point2 = new Point(((i + 1) * (double)histWidth / (double)histSize) - 1, histHeight - value);
             Imgproc.rectangle(histogramImage, point1, point2, scalar, Imgproc.FILLED);
         }
-        return histogramImage;
+        display(histogramImage);
     }
 
     public static double getBlurriness(Mat image) {
