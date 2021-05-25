@@ -10,36 +10,10 @@ import static org.opencv.imgproc.Imgproc.GC_INIT_WITH_RECT;
 
 public class LivenessUtils {
 
-    public static Mat getForegroundImage(Mat image) {
-        return getForegroundImage(image, new Mat());
-    }
-
-    public static Mat getForegroundImage(Mat image, Mat foregroundImageMask) {
-        int imageWidth = image.width();
-        int imageHeight = image.height();
-        int x = (int)(imageWidth * 0.05);
-        int y = (int)(imageHeight * 0.05);
-        int width = imageWidth - (x * 2);
-        int height = imageHeight - (y * 2);
-        Rect rect = new Rect(x, y, width, height);
-        return getForegroundImage(image, foregroundImageMask, rect);
-    }
-
-    public static Mat getForegroundImage(Mat image, Mat foregroundImageMask, Rect foregroundRect) {
-        Mat bgModel = new Mat();
-        Mat fgModel = new Mat();
-        Mat source = new Mat(1, 1, CvType.CV_8U, new Scalar(3));
-        Imgproc.grabCut(image, foregroundImageMask, foregroundRect, bgModel, fgModel,5, GC_INIT_WITH_RECT);
-        Core.compare(foregroundImageMask, source, foregroundImageMask, Core.CMP_EQ);
-        Mat foreground = new Mat(image.size(), CvType.CV_8UC3, new Scalar(255, 255, 255));
-        image.copyTo(foreground, foregroundImageMask);
-        return foreground;
-    }
-
     public static double analyseImageQuality(Mat image) {
         Mat hsvImage = new Mat();
         Imgproc.cvtColor(image, hsvImage, Imgproc.COLOR_BGR2HSV);
-        double[] valueValues = OpenCVUtils.getHistogram(hsvImage, 2);
+        double[] valueValues = OpenCVUtils.getHistogram(hsvImage, 2, 256);
         int activeValuesCounter = 0;
         for (int i = 0; i < 256; i++) {
             if (valueValues[i] > 0) {
@@ -49,7 +23,7 @@ public class LivenessUtils {
         return activeValuesCounter / 256.0;
     }
 
-    public static double analyseMoirePatternDisturbances(Mat image) {
+    public static double analyseImageMoirePatternDisturbances(Mat image) {
         // Convertir la imagen a escala de grises
         Mat grayImage = new Mat();
         OpenCVUtils.grayScale(image, grayImage);
@@ -119,11 +93,11 @@ public class LivenessUtils {
         return activatedPixels * 100.0 / totalPixels;
     }
 
-    public static double analyseMoirePatternDisturbancesOnBandWidths(Mat image) {
-        return analyseMoirePatternDisturbancesOnBandWidths(image, 2, 9, 0.1, 2.1, 0.2);
+    public static double analyseImageMoirePatternDisturbancesOnBandWidths(Mat image) {
+        return analyseImageMoirePatternDisturbancesOnBandWidths(image, 2, 9, 0.1, 2.1, 0.2);
     }
 
-    public static double analyseMoirePatternDisturbancesOnBandWidths(Mat image, double k, int kernelSize, double sigmaLow, double sigmaHigh, double sigmaDelta) {
+    public static double analyseImageMoirePatternDisturbancesOnBandWidths(Mat image, double k, int kernelSize, double sigmaLow, double sigmaHigh, double sigmaDelta) {
         // Convertir la imagen a escala de grises
         Mat grayImage = new Mat();
         OpenCVUtils.grayScale(image, grayImage);
@@ -210,5 +184,118 @@ public class LivenessUtils {
         }
 
         return disturbancesPercentage;
+    }
+
+    private static Mat getForegroundImage(Mat image) {
+        return getForegroundImage(image, new Mat());
+    }
+
+    private static Mat getForegroundImage(Mat image, Mat foregroundImageMask) {
+        int imageWidth = image.width();
+        int imageHeight = image.height();
+        int x = (int)(imageWidth * 0.05);
+        int y = (int)(imageHeight * 0.05);
+        int width = imageWidth - (x * 2);
+        int height = imageHeight - (y * 2);
+        Rect rect = new Rect(x, y, width, height);
+        return getForegroundImage(image, foregroundImageMask, rect);
+    }
+
+    private static Mat getForegroundImage(Mat image, Mat foregroundImageMask, Rect foregroundRect) {
+        Mat bgModel = new Mat();
+        Mat fgModel = new Mat();
+        Mat source = new Mat(1, 1, CvType.CV_8U, new Scalar(3));
+        Imgproc.grabCut(image, foregroundImageMask, foregroundRect, bgModel, fgModel,5, GC_INIT_WITH_RECT);
+        Core.compare(foregroundImageMask, source, foregroundImageMask, Core.CMP_EQ);
+        Mat foreground = new Mat(image.size(), CvType.CV_8UC3, new Scalar(255, 255, 255));
+        image.copyTo(foreground, foregroundImageMask);
+        return foreground;
+    }
+
+    private static Mat getLBP(Mat image) {
+        return getLBP(image, 8, 1, false);
+    }
+
+    private static Mat getLBP(Mat image, int pointsCount, int radius, boolean onlyUniformPatters) {
+        Mat lbp = Mat.zeros(image.size(), CV_8U);
+        double degreesDelta = (Math.PI * 2) / pointsCount;
+        int rows = image.rows();
+        int cols = image.cols();
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                double centerValue = image.get(row, col)[0];
+                double[] neighborValues = new double[pointsCount];
+                for (int index = 0; index < pointsCount; index++) {
+                    double radians = index * degreesDelta;
+                    int offsetCol = (int) Math.round(radius * Math.cos(radians) + col);
+                    int offsetRow = (int) Math.round(radius * Math.sin(radians) + row);
+                    neighborValues[index] = (offsetRow > 0 && offsetCol > 0 && offsetRow < rows && offsetCol < cols)? image.get(offsetRow, offsetCol)[0] : centerValue;
+                }
+                double newCenterValue = 0;
+                boolean lastValueActive = false;
+                int valueTransitions = 0;
+                for (int index = 0; index < pointsCount; index++) {
+                    double neighborValue = neighborValues[index];
+                    boolean valueActive = neighborValue >= centerValue;
+                    if (valueActive) {
+                        newCenterValue += Math.pow(2, index);
+                    }
+                    if (index > 0 && valueActive != lastValueActive) {
+                        valueTransitions++;
+                    }
+                    lastValueActive = valueActive;
+                }
+                boolean isUniformPattern = valueTransitions <= 2;
+                if (!onlyUniformPatters || isUniformPattern) {
+                    lbp.put(row, col, newCenterValue);
+                }
+            }
+        }
+        return lbp;
+    }
+
+    private static double[] getLBPVHistogram(Mat image, int pointsCount, int radius, boolean onlyUniformPatters) {
+        double[] histogram = new double[256];
+        double degreesDelta = (Math.PI * 2) / pointsCount;
+        int rows = image.rows();
+        int cols = image.cols();
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                double centerValue = image.get(row, col)[0];
+                double[] neighborValues = new double[pointsCount];
+                for (int index = 0; index < pointsCount; index++) {
+                    double radians = index * degreesDelta;
+                    int offsetCol = (int) Math.round(radius * Math.cos(radians) + col);
+                    int offsetRow = (int) Math.round(radius * Math.sin(radians) + row);
+                    neighborValues[index] = (offsetRow > 0 && offsetCol > 0 && offsetRow < rows && offsetCol < cols)? image.get(offsetRow, offsetCol)[0] : centerValue;
+                }
+                double newCenterValue = 0;
+                boolean lastValueActive = false;
+                int valueTransitions = 0;
+                for (int index = 0; index < pointsCount; index++) {
+                    double neighborValue = neighborValues[index];
+                    boolean valueActive = neighborValue > centerValue;
+                    if (valueActive) {
+                        newCenterValue += Math.pow(2, index);
+                    }
+                    if (index > 0 && valueActive != lastValueActive) {
+                        valueTransitions++;
+                    }
+                    lastValueActive = valueActive;
+                }
+                boolean isUniformPattern = valueTransitions <= 2;
+                if (!onlyUniformPatters || isUniformPattern) {
+                    double neighborValuesAverage = Arrays.stream(neighborValues).average().getAsDouble();
+                    double neighborValuesVarianceSum = 0;
+                    for (int index = 0; index < pointsCount; index++) {
+                        double neighborValue = neighborValues[index];
+                        neighborValuesVarianceSum += Math.pow(neighborValue - neighborValuesAverage, 2);
+                    }
+                    double neighborValuesVariance = neighborValuesVarianceSum / pointsCount;
+                    histogram[(int)newCenterValue] = neighborValuesVariance;
+                }
+            }
+        }
+        return histogram;
     }
 }

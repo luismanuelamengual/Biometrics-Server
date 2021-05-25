@@ -2,6 +2,7 @@ package com.biometrics.api.v1;
 
 import com.biometrics.ResponseException;
 import com.biometrics.utils.*;
+import org.apache.commons.io.FileUtils;
 import org.neogroup.warp.Request;
 import org.neogroup.warp.controllers.ControllerComponent;
 import org.neogroup.warp.controllers.routing.Body;
@@ -13,6 +14,7 @@ import org.opencv.core.*;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -205,6 +207,15 @@ public class ApiController {
             livenessStatusCode = 1;
         }
 
+        // Obtencioń de los rostros en las imagenes
+        Mat faceImage = image.submat(faceRect);
+        Mat zoomedFaceImage = zoomedImage.submat(zoomedFaceRect);
+        int imagesSize = 400;
+        Mat normalizedFaceImage = new Mat();
+        Mat normalizedZoomedFaceImage = new Mat();
+        OpenCVUtils.resize(faceImage, normalizedFaceImage, imagesSize, imagesSize, imagesSize, imagesSize);
+        OpenCVUtils.resize(zoomedFaceImage, normalizedZoomedFaceImage, imagesSize, imagesSize, imagesSize, imagesSize);
+
         // Validación de que el rostro con zoom sea efectivamente más grande que el otro
         if (livenessStatusCode == 0) {
             double imageFaceArea = faceRect.area();
@@ -238,19 +249,10 @@ public class ApiController {
             }
         }
 
+        // Validación de los patrones de Moire
         if (livenessStatusCode == 0) {
-            // Obtención de las imagenes del rostro
-            Mat faceImage = image.submat(faceRect);
-            Mat zoomedFaceImage = zoomedImage.submat(zoomedFaceRect);
-            int imagesSize = 400;
-            Mat normalizedFaceImage = new Mat();
-            Mat normalizedZoomedFaceImage = new Mat();
-            OpenCVUtils.resize(faceImage, normalizedFaceImage, imagesSize, imagesSize, imagesSize, imagesSize);
-            OpenCVUtils.resize(zoomedFaceImage, normalizedZoomedFaceImage, imagesSize, imagesSize, imagesSize, imagesSize);
-
-            // Validación del grado de perturbaciones del patrón de Moire
-            double imageMoirePatternDisturbances = LivenessUtils.analyseMoirePatternDisturbances(faceImage);
-            double zoomedImageMoirePatternDisturbances = LivenessUtils.analyseMoirePatternDisturbances(zoomedFaceImage);
+            double imageMoirePatternDisturbances = LivenessUtils.analyseImageMoirePatternDisturbances(faceImage);
+            double zoomedImageMoirePatternDisturbances = LivenessUtils.analyseImageMoirePatternDisturbances(zoomedFaceImage);
             if (imageMoirePatternDisturbances > 0.3 || zoomedImageMoirePatternDisturbances > 0.3) {
                 livenessStatusCode = 5;
             }
