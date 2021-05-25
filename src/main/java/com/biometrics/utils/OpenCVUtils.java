@@ -314,11 +314,11 @@ public final class OpenCVUtils {
         return mag;
     }
 
-    public static double[] getLBPHistogram(Mat src) {
-        return getLBPHistogram(src, 8, 1, false);
+    public static Mat getLBP(Mat src) {
+        return getLBP(src, 8, 1, false);
     }
 
-    public static double[] getLBPHistogram(Mat src, int pointsCount, int radius, boolean onlyUniformPatters) {
+    public static Mat getLBP(Mat src, int pointsCount, int radius, boolean onlyUniformPatters) {
         Mat lbp = Mat.zeros(src.size(), CV_8U);
         double degreesDelta = (Math.PI * 2) / pointsCount;
         int rows = src.rows();
@@ -353,7 +353,7 @@ public final class OpenCVUtils {
                 }
             }
         }
-        return getHistogram(lbp);
+        return lbp;
     }
 
     public static double[] getLBPVHistogram(Mat image, int pointsCount, int radius, boolean onlyUniformPatters) {
@@ -402,11 +402,10 @@ public final class OpenCVUtils {
     }
 
     public static double[] getHistogram(Mat image) {
-        return getHistogram(image, 0);
+        return getHistogram(image, 0, 256);
     }
 
-    public static double[] getHistogram(Mat image, int channel) {
-        int histSize = 256;
+    public static double[] getHistogram(Mat image, int channel, int histSize) {
         double[] histogramValues = new double[histSize];
         Mat histogram = new Mat();
         Imgproc.calcHist(Arrays.asList(image), new MatOfInt(channel), new Mat(), histogram, new MatOfInt(histSize), new MatOfFloat(0, histSize - 1), false);
