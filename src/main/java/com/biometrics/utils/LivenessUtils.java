@@ -10,6 +10,26 @@ import static org.opencv.imgproc.Imgproc.GC_INIT_WITH_RECT;
 
 public class LivenessUtils {
 
+    private static int[] NORMALIZED_BINARY_PATTERN_OFFSETS;
+
+    static {
+        int offset = 0;
+        NORMALIZED_BINARY_PATTERN_OFFSETS = new int[256];
+        for (int number = 0; number <= 255; number++) {
+            boolean lastValueActive = false;
+            int valueTransitions = 0;
+            for (int i = 7; i >= 0; i--) {
+                boolean valueActive = (number & 1 << i) != 0;
+                if (i < 7 && valueActive != lastValueActive) {
+                    valueTransitions++;
+                }
+                lastValueActive = valueActive;
+            }
+            boolean isNormal = valueTransitions <= 2;
+            NORMALIZED_BINARY_PATTERN_OFFSETS[number] = isNormal ? offset++ :  -1;
+        }
+    }
+
     public static double analyseImageQuality(Mat image) {
         Mat hsvImage = new Mat();
         Imgproc.cvtColor(image, hsvImage, Imgproc.COLOR_BGR2HSV);
@@ -212,6 +232,55 @@ public class LivenessUtils {
         return foreground;
     }
 
+    private static double[] getLBPDescriptors(Mat image, int pointsCount, int radius, boolean onlyUniformPatterns, int regionRows, int regionCols, boolean useVariance) {
+        double degreesDelta = (Math.PI * 2) / pointsCount;
+        int rows = image.rows();
+        int cols = image.cols();
+        int regionSize = onlyUniformPatterns ? 58 :  256;
+        int regionsCountX = (int)Math.ceil((double)cols / (double)regionCols);
+        int regionsCountY = (int)Math.ceil((double)rows / (double)regionRows);
+        int regionsCount = regionsCountX * regionsCountY;
+        int descriptorSize = regionsCount * regionSize;
+        double[] descriptorData = new double[descriptorSize];
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                double centerValue = image.get(row, col)[0];
+                double[] neighborValues = new double[pointsCount];
+                for (int index = 0; index < pointsCount; index++) {
+                    double radians = index * degreesDelta;
+                    int offsetCol = (int) Math.round(radius * Math.cos(radians) + col);
+                    int offsetRow = (int) Math.round(radius * Math.sin(radians) + row);
+                    neighborValues[index] = (offsetRow > 0 && offsetCol > 0 && offsetRow < rows && offsetCol < cols)? image.get(offsetRow, offsetCol)[0] : centerValue;
+                }
+                int newCenterValue = 0;
+                for (int index = 0; index < pointsCount; index++) {
+                    if (neighborValues[index] >= centerValue) {
+                        newCenterValue += Math.pow(2, index);
+                    }
+                }
+                int normalizedBinaryOffset = NORMALIZED_BINARY_PATTERN_OFFSETS[newCenterValue];
+                if (!onlyUniformPatterns || normalizedBinaryOffset >= 0) {
+                    int subRegionX = (int)Math.floor((double)col / (double)regionCols);
+                    int subRegionY = (int)Math.floor((double)row / (double)regionRows);
+                    int descriptorIndex = (((subRegionY * regionsCountX) + subRegionX) * regionSize) + (onlyUniformPatterns ? normalizedBinaryOffset : newCenterValue);
+
+                    if (useVariance) {
+                        double neighborValuesAverage = Arrays.stream(neighborValues).average().getAsDouble();
+                        double neighborValuesVarianceSum = 0;
+                        for (int index = 0; index < pointsCount; index++) {
+                            neighborValuesVarianceSum += Math.pow(neighborValues[index] - neighborValuesAverage, 2);
+                        }
+                        double neighborValuesVariance = neighborValuesVarianceSum / pointsCount;
+                        descriptorData[descriptorIndex] += neighborValuesVariance;
+                    } else {
+                        descriptorData[descriptorIndex]++;
+                    }
+                }
+            }
+        }
+        return descriptorData;
+    }
+
     private static Mat getLBP(Mat image) {
         return getLBP(image, 8, 1, false);
     }
@@ -291,8 +360,8 @@ public class LivenessUtils {
                         double neighborValue = neighborValues[index];
                         neighborValuesVarianceSum += Math.pow(neighborValue - neighborValuesAverage, 2);
                     }
-                    double neighborValuesVariance = neighborValuesVarianceSum / pointsCount;
-                    histogram[(int)newCenterValue] = neighborValuesVariance;
+                    double neighborValuesVariance = Math.sqrt(neighborValuesVarianceSum / pointsCount);
+                    histogram[(int)newCenterValue] += neighborValuesVariance;
                 }
             }
         }

@@ -329,10 +329,14 @@ public final class OpenCVUtils {
     }
 
     public static void displayHistogram (double[] histogramValues) {
-        displayHistogram (histogramValues, 600, 400, Color.RED);
+        displayHistogram (histogramValues, "Histogram");
     }
 
-    public static void displayHistogram (double[] histogramValues, int histWidth, int histHeight, Color color) {
+    public static void displayHistogram (double[] histogramValues, String label) {
+        displayHistogram (histogramValues, label, 600, 400, Color.RED);
+    }
+
+    public static void displayHistogram (double[] histogramValues, String label, int histWidth, int histHeight, Color color) {
         Scalar scalar = getScalarFromColor(color);
         Mat histogramImage = Mat.zeros(histHeight, histWidth, CV_8UC3);
         double maxValue = 0;
@@ -348,7 +352,7 @@ public final class OpenCVUtils {
             Point point2 = new Point(((i + 1) * (double)histWidth / (double)histSize) - 1, histHeight - value);
             Imgproc.rectangle(histogramImage, point1, point2, scalar, Imgproc.FILLED);
         }
-        display(histogramImage);
+        display(histogramImage, label);
     }
 
     public static double getBlurriness(Mat image) {
