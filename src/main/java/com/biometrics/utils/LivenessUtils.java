@@ -33,6 +33,7 @@ public class LivenessUtils {
     public static double analyseImageQuality(Mat image) {
         Mat hsvImage = new Mat();
         Imgproc.cvtColor(image, hsvImage, Imgproc.COLOR_BGR2HSV);
+        double[] saturationValues = OpenCVUtils.getHistogram(hsvImage, 1, 256);
         double[] valueValues = OpenCVUtils.getHistogram(hsvImage, 2, 256);
         int activeValuesCounter = 0;
         for (int i = 0; i < 256; i++) {
@@ -40,7 +41,19 @@ public class LivenessUtils {
                 activeValuesCounter++;
             }
         }
-        return activeValuesCounter / 256.0;
+        double valueQuality = activeValuesCounter / 256.0;
+
+
+        double maxSaturationValue = Arrays.stream(saturationValues).max().getAsDouble();
+        double maxSaturationThreshold = maxSaturationValue * 0.4;
+        int normalSaturationCounter = 0;
+        for (int i = 0; i < 256; i++) {
+            if (saturationValues[i] < maxSaturationThreshold) {
+                normalSaturationCounter++;
+            }
+        }
+        double saturationQuality = normalSaturationCounter / 256.0;
+        return valueQuality * saturationQuality;
     }
 
     public static double analyseImageMoirePatternDisturbances(Mat image) {

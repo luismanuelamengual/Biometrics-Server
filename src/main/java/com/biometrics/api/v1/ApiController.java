@@ -207,54 +207,56 @@ public class ApiController {
             livenessStatusCode = 1;
         }
 
-        // Obtencioń de los rostros en las imagenes
-        Mat faceImage = image.submat(faceRect);
-        Mat zoomedFaceImage = zoomedImage.submat(zoomedFaceRect);
-        int imagesSize = 400;
-        Mat normalizedFaceImage = new Mat();
-        Mat normalizedZoomedFaceImage = new Mat();
-        OpenCVUtils.resize(faceImage, normalizedFaceImage, imagesSize, imagesSize, imagesSize, imagesSize);
-        OpenCVUtils.resize(zoomedFaceImage, normalizedZoomedFaceImage, imagesSize, imagesSize, imagesSize, imagesSize);
-
-        // Validación de que el rostro con zoom sea efectivamente más grande que el otro
         if (livenessStatusCode == 0) {
-            double imageFaceArea = faceRect.area();
-            double zoomedImageFaceArea = zoomedFaceRect.area();
-            if (imageFaceArea >= (0.9 * zoomedImageFaceArea)) {
-                livenessStatusCode = 2;
+            // Obtencioń de los rostros en las imagenes
+            Mat faceImage = image.submat(faceRect);
+            Mat zoomedFaceImage = zoomedImage.submat(zoomedFaceRect);
+            int imagesSize = 400;
+            Mat normalizedFaceImage = new Mat();
+            Mat normalizedZoomedFaceImage = new Mat();
+            OpenCVUtils.resize(faceImage, normalizedFaceImage, imagesSize, imagesSize, imagesSize, imagesSize);
+            OpenCVUtils.resize(zoomedFaceImage, normalizedZoomedFaceImage, imagesSize, imagesSize, imagesSize, imagesSize);
+
+            // Validación de que el rostro con zoom sea efectivamente más grande que el otro
+            if (livenessStatusCode == 0) {
+                double imageFaceArea = faceRect.area();
+                double zoomedImageFaceArea = zoomedFaceRect.area();
+                if (imageFaceArea >= (0.9 * zoomedImageFaceArea)) {
+                    livenessStatusCode = 2;
+                }
             }
-        }
 
-        // Validación de calidad de las imagenes
-        if (livenessStatusCode == 0) {
-            double imageQuality = LivenessUtils.analyseImageQuality(image);
-            double zoomedImageQuality = LivenessUtils.analyseImageQuality(zoomedImage);
-            if (imageQuality < 0.95 || zoomedImageQuality < 0.95) {
-                livenessStatusCode = 3;
+            // Validación de calidad de las imagenes
+            if (livenessStatusCode == 0) {
+                double imageQuality = LivenessUtils.analyseImageQuality(image);
+                double zoomedImageQuality = LivenessUtils.analyseImageQuality(zoomedImage);
+                if (imageQuality < 0.9 || zoomedImageQuality < 0.9) {
+                    livenessStatusCode = 3;
+                }
             }
-        }
 
-        // Validación de comparación de histogramas
-        if (livenessStatusCode == 0) {
-            int[] histSize = { 50, 60 };
-            float[] ranges = { 0, 180, 0, 256 };
-            int[] channels = { 0, 1 };
-            Mat imageHist = new Mat();
-            Imgproc.calcHist(Arrays.asList(image), new MatOfInt(channels), new Mat(), imageHist, new MatOfInt(histSize), new MatOfFloat(ranges), false);
-            Mat zoomedImageHist = new Mat();
-            Imgproc.calcHist(Arrays.asList(zoomedImage), new MatOfInt(channels), new Mat(), zoomedImageHist, new MatOfInt(histSize), new MatOfFloat(ranges), false);
-            double histSimilarity = Imgproc.compareHist(imageHist, zoomedImageHist, Imgproc.HISTCMP_CORREL);
-            if (histSimilarity < 0.4) {
-                livenessStatusCode = 4;
+            // Validación de comparación de histogramas
+            if (livenessStatusCode == 0) {
+                int[] histSize = {50, 60};
+                float[] ranges = {0, 180, 0, 256};
+                int[] channels = {0, 1};
+                Mat imageHist = new Mat();
+                Imgproc.calcHist(Arrays.asList(image), new MatOfInt(channels), new Mat(), imageHist, new MatOfInt(histSize), new MatOfFloat(ranges), false);
+                Mat zoomedImageHist = new Mat();
+                Imgproc.calcHist(Arrays.asList(zoomedImage), new MatOfInt(channels), new Mat(), zoomedImageHist, new MatOfInt(histSize), new MatOfFloat(ranges), false);
+                double histSimilarity = Imgproc.compareHist(imageHist, zoomedImageHist, Imgproc.HISTCMP_CORREL);
+                if (histSimilarity < 0.4) {
+                    livenessStatusCode = 4;
+                }
             }
-        }
 
-        // Validación de los patrones de Moire
-        if (livenessStatusCode == 0) {
-            double imageMoirePatternDisturbances = LivenessUtils.analyseImageMoirePatternDisturbances(faceImage);
-            double zoomedImageMoirePatternDisturbances = LivenessUtils.analyseImageMoirePatternDisturbances(zoomedFaceImage);
-            if (imageMoirePatternDisturbances > 0.3 || zoomedImageMoirePatternDisturbances > 0.3) {
-                livenessStatusCode = 5;
+            // Validación de los patrones de Moire
+            if (livenessStatusCode == 0) {
+                double imageMoirePatternDisturbances = LivenessUtils.analyseImageMoirePatternDisturbances(faceImage);
+                double zoomedImageMoirePatternDisturbances = LivenessUtils.analyseImageMoirePatternDisturbances(zoomedFaceImage);
+                if (imageMoirePatternDisturbances > 0.3 || zoomedImageMoirePatternDisturbances > 0.3) {
+                    livenessStatusCode = 5;
+                }
             }
         }
 
