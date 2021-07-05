@@ -364,6 +364,12 @@ public final class OpenCVUtils {
         return Math.pow(sigma.get(0,0)[0], 2);
     }
 
+    public static double getBrightness(Mat image) {
+        Mat hsvImage = new Mat();
+        Imgproc.cvtColor(image, hsvImage, Imgproc.COLOR_BGR2HSV);
+        return Core.mean(hsvImage).val[2];
+    }
+
     public static CascadeClassifier getClassfierFromResource(String resourceName) {
         CascadeClassifier classifier = null;
         InputStream inputStream = null;

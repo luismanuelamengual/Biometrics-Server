@@ -235,6 +235,15 @@ public class ApiController {
                 }
             }
 
+            // Validación del grado de brillo de las imagenes
+            if (livenessStatusCode == 0) {
+                double imageBrightness = OpenCVUtils.getBrightness(image);
+                double zoomedImageBrightness = OpenCVUtils.getBrightness(zoomedImage);
+                if (imageBrightness < 100 || imageBrightness > 200 || zoomedImageBrightness < 100 || zoomedImageBrightness > 200) {
+                    livenessStatusCode = 4;
+                }
+            }
+
             // Validación de comparación de histogramas
             if (livenessStatusCode == 0) {
                 int[] histSize = {50, 60};
@@ -246,7 +255,7 @@ public class ApiController {
                 Imgproc.calcHist(Arrays.asList(zoomedImage), new MatOfInt(channels), new Mat(), zoomedImageHist, new MatOfInt(histSize), new MatOfFloat(ranges), false);
                 double histSimilarity = Imgproc.compareHist(imageHist, zoomedImageHist, Imgproc.HISTCMP_CORREL);
                 if (histSimilarity < 0.4) {
-                    livenessStatusCode = 4;
+                    livenessStatusCode = 5;
                 }
             }
 
@@ -255,7 +264,7 @@ public class ApiController {
                 double imageMoirePatternDisturbances = LivenessUtils.analyseImageMoirePatternDisturbances(faceImage);
                 double zoomedImageMoirePatternDisturbances = LivenessUtils.analyseImageMoirePatternDisturbances(zoomedFaceImage);
                 if (imageMoirePatternDisturbances > 0.3 || zoomedImageMoirePatternDisturbances > 0.3) {
-                    livenessStatusCode = 5;
+                    livenessStatusCode = 6;
                 }
             }
         }
