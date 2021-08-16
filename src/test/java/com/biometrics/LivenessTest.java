@@ -166,6 +166,11 @@ public class LivenessTest extends BaseTest {
         testLivenessResponse("src/test/resources/liveness/liveness31/", true);
     }
 
+    @Test
+    public void testLiveness32() {
+        testLivenessResponse("src/test/resources/liveness/liveness32/", false);
+    }
+
     private void testLivenessResponse(String livenessFolder, boolean liveness) {
         System.out.println("Liveness data \"" + livenessFolder + "\" should be " + (liveness? "REAL" : "FAKE (SPOOF)"));
         try {
