@@ -245,15 +245,18 @@ public class LivenessUtils {
         return foreground;
     }
 
-    private static double[] getLBPDescriptors(Mat image, int pointsCount, int radius, boolean onlyUniformPatterns, int regionRows, int regionCols, boolean useVariance) {
+    private static double[] getLBPDescriptor(Mat image, int pointsCount, int radius, Size regionSize, boolean onlyUniformPatterns, boolean useVariance) {
         double degreesDelta = (Math.PI * 2) / pointsCount;
         int rows = image.rows();
         int cols = image.cols();
-        int regionSize = onlyUniformPatterns ? 58 :  256;
-        int regionsCountX = (int)Math.ceil((double)cols / (double)regionCols);
-        int regionsCountY = (int)Math.ceil((double)rows / (double)regionRows);
+        if (regionSize == null) {
+            regionSize = new Size(cols, rows);
+        }
+        int regionElementsSize = onlyUniformPatterns ? 58 :  256;
+        int regionsCountX = (int)Math.ceil((double)cols / regionSize.width);
+        int regionsCountY = (int)Math.ceil((double)rows / regionSize.height);
         int regionsCount = regionsCountX * regionsCountY;
-        int descriptorSize = regionsCount * regionSize;
+        int descriptorSize = regionsCount * regionElementsSize;
         double[] descriptorData = new double[descriptorSize];
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
@@ -273,9 +276,9 @@ public class LivenessUtils {
                 }
                 int normalizedBinaryOffset = NORMALIZED_BINARY_PATTERN_OFFSETS[newCenterValue];
                 if (!onlyUniformPatterns || normalizedBinaryOffset >= 0) {
-                    int subRegionX = (int)Math.floor((double)col / (double)regionCols);
-                    int subRegionY = (int)Math.floor((double)row / (double)regionRows);
-                    int descriptorIndex = (((subRegionY * regionsCountX) + subRegionX) * regionSize) + (onlyUniformPatterns ? normalizedBinaryOffset : newCenterValue);
+                    int subRegionX = (int)Math.floor((double)col / regionSize.width);
+                    int subRegionY = (int)Math.floor((double)row / regionSize.height);
+                    int descriptorIndex = (((subRegionY * regionsCountX) + subRegionX) * regionElementsSize) + (onlyUniformPatterns ? normalizedBinaryOffset : newCenterValue);
 
                     if (useVariance) {
                         double neighborValuesAverage = Arrays.stream(neighborValues).average().getAsDouble();
