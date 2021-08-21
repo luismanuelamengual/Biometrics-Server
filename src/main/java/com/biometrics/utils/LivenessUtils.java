@@ -245,6 +245,57 @@ public class LivenessUtils {
         return foreground;
     }
 
+    private static double[] getHOGDescriptor(Mat image, int angleAgrupationSize, Size regionSize) {
+        int rows = image.rows();
+        int cols = image.cols();
+        if (regionSize == null) {
+            regionSize = new Size(cols, rows);
+        }
+        if (angleAgrupationSize < 1) {
+            angleAgrupationSize = 1;
+        }
+        int regionElementsSize = (int)(180.0 / (double)angleAgrupationSize);
+        int regionsCountX = (int)Math.ceil((double)cols / regionSize.width);
+        int regionsCountY = (int)Math.ceil((double)rows / regionSize.height);
+        int regionsCount = regionsCountX * regionsCountY;
+        int descriptorSize = regionsCount * regionElementsSize;
+        double[] descriptorData = new double[descriptorSize];
+
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                double xDifference = 0;
+                double yDifference = 0;
+                if (col > 0 && col < (cols - 1)) {
+                    xDifference = image.get(row, col + 1)[0] - image.get(row, col - 1)[0];
+                }
+                if (row > 0 && row < (rows - 1)) {
+                    yDifference = image.get(row + 1, col)[0] - image.get(row - 1, col)[0];
+                }
+                double pixelMagnitude = Math.sqrt(Math.pow(xDifference, 2) + Math.pow(yDifference, 2));
+                int pixelAngle = (int)Math.abs(Math.toDegrees(Math.atan(yDifference / xDifference)));
+
+                int subRegionX = (int)Math.floor((double)col / regionSize.width);
+                int subRegionY = (int)Math.floor((double)row / regionSize.height);
+                for (int descriptorOffset = 0, angle = 0; angle <= 180; angle += angleAgrupationSize, descriptorOffset++) {
+                    if (angle >= pixelAngle) {
+                        if (descriptorOffset > 0) {
+                            double descriptorMultiplier = (angle - pixelAngle) / (double)angleAgrupationSize;
+                            if (descriptorMultiplier > 0) {
+                                int descriptorIndex = (((subRegionY * regionsCountX) + subRegionX) * regionElementsSize) + descriptorOffset - 1;
+                                descriptorData[descriptorIndex] += descriptorMultiplier * pixelMagnitude;
+                            }
+                        }
+                        double descriptorMultiplier = (descriptorOffset == 0)? 1 : ((pixelAngle - (angle - angleAgrupationSize)) / (double)angleAgrupationSize);
+                        int descriptorIndex = (((subRegionY * regionsCountX) + subRegionX) * regionElementsSize);
+                        descriptorData[descriptorIndex] += descriptorMultiplier * pixelMagnitude;
+                        break;
+                    }
+                }
+            }
+        }
+        return descriptorData;
+    }
+
     private static double[] getLBPDescriptor(Mat image, int pointsCount, int radius, Size regionSize, boolean onlyUniformPatterns, boolean useVariance) {
         double degreesDelta = (Math.PI * 2) / pointsCount;
         int rows = image.rows();
@@ -266,7 +317,7 @@ public class LivenessUtils {
                     double radians = index * degreesDelta;
                     int offsetCol = (int) Math.round(radius * Math.cos(radians) + col);
                     int offsetRow = (int) Math.round(radius * Math.sin(radians) + row);
-                    neighborValues[index] = (offsetRow > 0 && offsetCol > 0 && offsetRow < rows && offsetCol < cols)? image.get(offsetRow, offsetCol)[0] : centerValue;
+                    neighborValues[index] = (offsetRow >= 0 && offsetCol >= 0 && offsetRow < rows && offsetCol < cols)? image.get(offsetRow, offsetCol)[0] : centerValue;
                 }
                 int newCenterValue = 0;
                 for (int index = 0; index < pointsCount; index++) {
