@@ -308,6 +308,7 @@ public class LivenessUtils {
         int regionsCountY = (int)Math.ceil((double)rows / regionSize.height);
         int regionsCount = regionsCountX * regionsCountY;
         int descriptorSize = regionsCount * regionElementsSize;
+        double valueMultiplier = 256 / (Math.pow(2, pointsCount));
         double[] descriptorData = new double[descriptorSize];
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
@@ -325,6 +326,7 @@ public class LivenessUtils {
                         newCenterValue += Math.pow(2, index);
                     }
                 }
+                newCenterValue *= valueMultiplier;
                 int normalizedBinaryOffset = NORMALIZED_BINARY_PATTERN_OFFSETS[newCenterValue];
                 if (!onlyUniformPatterns || normalizedBinaryOffset >= 0) {
                     int subRegionX = (int)Math.floor((double)col / regionSize.width);
@@ -357,6 +359,7 @@ public class LivenessUtils {
         double degreesDelta = (Math.PI * 2) / pointsCount;
         int rows = image.rows();
         int cols = image.cols();
+        double valueMultiplier = 256 / (Math.pow(2, pointsCount));
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
                 double centerValue = image.get(row, col)[0];
@@ -365,7 +368,7 @@ public class LivenessUtils {
                     double radians = index * degreesDelta;
                     int offsetCol = (int) Math.round(radius * Math.cos(radians) + col);
                     int offsetRow = (int) Math.round(radius * Math.sin(radians) + row);
-                    neighborValues[index] = (offsetRow > 0 && offsetCol > 0 && offsetRow < rows && offsetCol < cols)? image.get(offsetRow, offsetCol)[0] : centerValue;
+                    neighborValues[index] = (offsetRow >= 0 && offsetCol >= 0 && offsetRow < rows && offsetCol < cols)? image.get(offsetRow, offsetCol)[0] : centerValue;
                 }
                 double newCenterValue = 0;
                 boolean lastValueActive = false;
@@ -381,6 +384,7 @@ public class LivenessUtils {
                     }
                     lastValueActive = valueActive;
                 }
+                newCenterValue *= valueMultiplier;
                 boolean isUniformPattern = valueTransitions <= 2;
                 if (!onlyUniformPatters || isUniformPattern) {
                     lbp.put(row, col, newCenterValue);
@@ -395,6 +399,7 @@ public class LivenessUtils {
         double degreesDelta = (Math.PI * 2) / pointsCount;
         int rows = image.rows();
         int cols = image.cols();
+        double valueMultiplier = 256 / (Math.pow(2, pointsCount));
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
                 double centerValue = image.get(row, col)[0];
@@ -403,7 +408,7 @@ public class LivenessUtils {
                     double radians = index * degreesDelta;
                     int offsetCol = (int) Math.round(radius * Math.cos(radians) + col);
                     int offsetRow = (int) Math.round(radius * Math.sin(radians) + row);
-                    neighborValues[index] = (offsetRow > 0 && offsetCol > 0 && offsetRow < rows && offsetCol < cols)? image.get(offsetRow, offsetCol)[0] : centerValue;
+                    neighborValues[index] = (offsetRow >= 0 && offsetCol >= 0 && offsetRow < rows && offsetCol < cols)? image.get(offsetRow, offsetCol)[0] : centerValue;
                 }
                 double newCenterValue = 0;
                 boolean lastValueActive = false;
@@ -419,6 +424,7 @@ public class LivenessUtils {
                     }
                     lastValueActive = valueActive;
                 }
+                newCenterValue *= valueMultiplier;
                 boolean isUniformPattern = valueTransitions <= 2;
                 if (!onlyUniformPatters || isUniformPattern) {
                     double neighborValuesAverage = Arrays.stream(neighborValues).average().getAsDouble();
