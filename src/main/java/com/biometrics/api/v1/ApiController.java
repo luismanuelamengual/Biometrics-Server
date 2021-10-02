@@ -246,42 +246,28 @@ public class ApiController {
 
             // Validación de calidad de las imagenes
             if (livenessStatusCode == LIVENESS_OK_STATUS_CODE) {
-                double imageQuality = LivenessUtils.analyseImageQuality(image);
-                double zoomedImageQuality = LivenessUtils.analyseImageQuality(zoomedImage);
-                if (imageQuality < 0.9 || zoomedImageQuality < 0.9) {
+                if (!LivenessUtils.analyseImageQuality(image) || !LivenessUtils.analyseImageQuality(zoomedImage)) {
                     livenessStatusCode = LIVENESS_IMAGE_QUALITY_CHECK_FAILED_STATUS_CODE;
                 }
             }
 
             // Validación del grado de brillo de las imagenes
             if (livenessStatusCode == LIVENESS_OK_STATUS_CODE) {
-                double imageBrightness = OpenCVUtils.getBrightness(image);
-                double zoomedImageBrightness = OpenCVUtils.getBrightness(zoomedImage);
-                if (imageBrightness < 100 || imageBrightness > 200 || zoomedImageBrightness < 100 || zoomedImageBrightness > 200) {
+                if (!LivenessUtils.analyseImageBrightness(image) || !LivenessUtils.analyseImageBrightness(zoomedImage)) {
                     livenessStatusCode = LIVENESS_IMAGE_BRIGHTNESS_CHECK_FAILED_STATUS_CODE;
                 }
             }
 
             // Validación de comparación de histogramas
             if (livenessStatusCode == LIVENESS_OK_STATUS_CODE) {
-                int[] histSize = {50, 60};
-                float[] ranges = {0, 180, 0, 256};
-                int[] channels = {0, 1};
-                Mat imageHist = new Mat();
-                Imgproc.calcHist(Arrays.asList(image), new MatOfInt(channels), new Mat(), imageHist, new MatOfInt(histSize), new MatOfFloat(ranges), false);
-                Mat zoomedImageHist = new Mat();
-                Imgproc.calcHist(Arrays.asList(zoomedImage), new MatOfInt(channels), new Mat(), zoomedImageHist, new MatOfInt(histSize), new MatOfFloat(ranges), false);
-                double histSimilarity = Imgproc.compareHist(imageHist, zoomedImageHist, Imgproc.HISTCMP_CORREL);
-                if (histSimilarity < 0.4) {
+                if (!LivenessUtils.analyseImageHistograms(image, zoomedImage)) {
                     livenessStatusCode = LIVENESS_IMAGE_HISTOGRAM_CHECK_FAILED_STATUS_CODE;
                 }
             }
 
             // Validación de los patrones de Moire
             if (livenessStatusCode == LIVENESS_OK_STATUS_CODE) {
-                double imageMoirePatternDisturbances = LivenessUtils.analyseImageMoirePatternDisturbances(faceImage);
-                double zoomedImageMoirePatternDisturbances = LivenessUtils.analyseImageMoirePatternDisturbances(zoomedFaceImage);
-                if (imageMoirePatternDisturbances > 0.3 || zoomedImageMoirePatternDisturbances > 0.3) {
+                if (!LivenessUtils.analyseImageMoirePatternDisturbances(faceImage) || !LivenessUtils.analyseImageMoirePatternDisturbances(zoomedFaceImage)) {
                     livenessStatusCode = LIVENESS_IMAGE_MOIRE_PATTERN_CHECK_FAILED_STATUS_CODE;
                 }
             }

@@ -30,7 +30,14 @@ public class LivenessUtils {
         }
     }
 
-    public static double analyseImageQuality(Mat image) {
+    public static boolean analyseNormalizedImagesBlurriness(Mat image, Mat image2) {
+        double blurriness1 = OpenCVUtils.getBlurriness(image);
+        double blurriness2 = OpenCVUtils.getBlurriness(image2);
+        double blurrinessCoeficient = blurriness2 / blurriness1;
+        return blurrinessCoeficient >= 1.0 && blurrinessCoeficient <= 3.0;
+    }
+
+    public static boolean analyseImageQuality(Mat image) {
         Mat hsvImage = new Mat();
         Imgproc.cvtColor(image, hsvImage, Imgproc.COLOR_BGR2HSV);
         double[] saturationValues = OpenCVUtils.getHistogram(hsvImage, 1, 256);
@@ -42,8 +49,6 @@ public class LivenessUtils {
             }
         }
         double valueQuality = activeValuesCounter / 256.0;
-
-
         double maxSaturationValue = Arrays.stream(saturationValues).max().getAsDouble();
         double maxSaturationThreshold = maxSaturationValue * 0.4;
         int normalSaturationCounter = 0;
@@ -53,10 +58,28 @@ public class LivenessUtils {
             }
         }
         double saturationQuality = normalSaturationCounter / 256.0;
-        return valueQuality * saturationQuality;
+        double quality = valueQuality * saturationQuality;
+        return quality >= 0.9;
     }
 
-    public static double analyseImageMoirePatternDisturbances(Mat image) {
+    public static boolean analyseImageBrightness(Mat image) {
+        double imageBrightness = OpenCVUtils.getBrightness(image);
+        return imageBrightness >= 100 && imageBrightness <= 200;
+    }
+
+    public static boolean analyseImageHistograms(Mat image, Mat zoomedImage) {
+        int[] histSize = {50, 60};
+        float[] ranges = {0, 180, 0, 256};
+        int[] channels = {0, 1};
+        Mat imageHist = new Mat();
+        Imgproc.calcHist(Arrays.asList(image), new MatOfInt(channels), new Mat(), imageHist, new MatOfInt(histSize), new MatOfFloat(ranges), false);
+        Mat zoomedImageHist = new Mat();
+        Imgproc.calcHist(Arrays.asList(zoomedImage), new MatOfInt(channels), new Mat(), zoomedImageHist, new MatOfInt(histSize), new MatOfFloat(ranges), false);
+        double histSimilarity = Imgproc.compareHist(imageHist, zoomedImageHist, Imgproc.HISTCMP_CORREL);
+        return histSimilarity >= 0.4;
+    }
+
+    public static boolean analyseImageMoirePatternDisturbances(Mat image) {
         // Convertir la imagen a escala de grises
         Mat grayImage = new Mat();
         OpenCVUtils.grayScale(image, grayImage);
@@ -123,14 +146,15 @@ public class LivenessUtils {
         // Calcular el porcentaje de pixels encendidos en el espectro de alta frecuencia
         int totalPixels = cols * rows;
         int activatedPixels = Core.countNonZero(highFrequencySpectrum);
-        return activatedPixels * 100.0 / totalPixels;
+        double disturbancesPercentage = activatedPixels * 100.0 / totalPixels;
+        return disturbancesPercentage < 0.3;
     }
 
-    public static double analyseImageMoirePatternDisturbancesOnBandWidths(Mat image) {
+    private static double analyseImageMoirePatternDisturbancesOnBandWidths(Mat image) {
         return analyseImageMoirePatternDisturbancesOnBandWidths(image, 2, 9, 0.1, 2.1, 0.2);
     }
 
-    public static double analyseImageMoirePatternDisturbancesOnBandWidths(Mat image, double k, int kernelSize, double sigmaLow, double sigmaHigh, double sigmaDelta) {
+    private static double analyseImageMoirePatternDisturbancesOnBandWidths(Mat image, double k, int kernelSize, double sigmaLow, double sigmaHigh, double sigmaDelta) {
         // Convertir la imagen a escala de grises
         Mat grayImage = new Mat();
         OpenCVUtils.grayScale(image, grayImage);
@@ -217,13 +241,6 @@ public class LivenessUtils {
         }
 
         return disturbancesPercentage;
-    }
-
-    public static boolean analyseNormalizedImagesBlurriness(Mat image, Mat image2) {
-        double blurriness1 = OpenCVUtils.getBlurriness(image);
-        double blurriness2 = OpenCVUtils.getBlurriness(image2);
-        double blurrinessCoeficient = blurriness2 / blurriness1;
-        return blurrinessCoeficient >= 1.0 && blurrinessCoeficient <= 3.0;
     }
 
     private static Mat getForegroundImage(Mat image) {
