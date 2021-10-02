@@ -2,7 +2,6 @@ package com.biometrics.api.v1;
 
 import com.biometrics.ResponseException;
 import com.biometrics.utils.*;
-import org.apache.commons.io.FileUtils;
 import org.neogroup.warp.Request;
 import org.neogroup.warp.controllers.ControllerComponent;
 import org.neogroup.warp.controllers.routing.Body;
@@ -14,7 +13,6 @@ import org.opencv.core.*;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -24,6 +22,15 @@ import static org.opencv.core.Core.NORM_MINMAX;
 
 @ControllerComponent("v1")
 public class ApiController {
+
+    private static final int LIVENESS_OK_STATUS_CODE = 0;
+    private static final int LIVENESS_FACE_NOT_FOUND_STATUS_CODE = 1;
+    private static final int LIVENESS_FACE_NOT_ZOOMED_STATUS_CODE = 2;
+    private static final int LIVENESS_BLURRINESS_CHECK_FAILED_STATUS_CODE = 3;
+    private static final int LIVENESS_IMAGE_QUALITY_CHECK_FAILED_STATUS_CODE = 4;
+    private static final int LIVENESS_IMAGE_BRIGHTNESS_CHECK_FAILED_STATUS_CODE = 5;
+    private static final int LIVENESS_IMAGE_HISTOGRAM_CHECK_FAILED_STATUS_CODE = 6;
+    private static final int LIVENESS_IMAGE_MOIRE_PATTERN_CHECK_FAILED_STATUS_CODE = 7;
 
     private static final int FACE_MATCH_STATUS_CODE = 1;
     private static final int FACE_FOUND_STATUS_CODE = 0;
@@ -196,7 +203,13 @@ public class ApiController {
 
     @Post("check_liveness_3d")
     public DataObject checkLiveness3d(@Parameter("picture") byte[] imageBytes, @Parameter("zoomedPicture") byte[] zoomedImageBytes) {
-        int livenessStatusCode = 0;
+
+        /*try {
+            FileUtils.writeByteArrayToFile(new File("src/test/resources/liveness/liveness/image.jpeg"), imageBytes);
+            FileUtils.writeByteArrayToFile(new File("src/test/resources/liveness/liveness/zoomedImage.jpeg"), zoomedImageBytes);
+        } catch (Exception ex) {}*/
+
+        int livenessStatusCode = LIVENESS_OK_STATUS_CODE;
         Mat image = OpenCVUtils.getImage(imageBytes);
         Mat zoomedImage = OpenCVUtils.getImage(zoomedImageBytes);
 
@@ -204,10 +217,10 @@ public class ApiController {
         Rect faceRect = OpenCVUtils.detectBiggestFeatureRect(image, faceClassfier);
         Rect zoomedFaceRect = OpenCVUtils.detectBiggestFeatureRect(zoomedImage, faceClassfier);
         if (faceRect == null || zoomedFaceRect == null) {
-            livenessStatusCode = 1;
+            livenessStatusCode = LIVENESS_FACE_NOT_FOUND_STATUS_CODE;
         }
 
-        if (livenessStatusCode == 0) {
+        if (livenessStatusCode == LIVENESS_OK_STATUS_CODE) {
             // Obtencioń de los rostros en las imagenes
             Mat faceImage = image.submat(faceRect);
             Mat zoomedFaceImage = zoomedImage.submat(zoomedFaceRect);
@@ -218,34 +231,39 @@ public class ApiController {
             OpenCVUtils.resize(zoomedFaceImage, normalizedZoomedFaceImage, imagesSize, imagesSize, imagesSize, imagesSize);
 
             // Validación de que el rostro con zoom sea efectivamente más grande que el otro
-            if (livenessStatusCode == 0) {
-                double imageFaceArea = faceRect.area();
-                double zoomedImageFaceArea = zoomedFaceRect.area();
-                if (imageFaceArea >= (0.9 * zoomedImageFaceArea)) {
-                    livenessStatusCode = 2;
+            double imageFaceArea = faceRect.area();
+            double zoomedImageFaceArea = zoomedFaceRect.area();
+            if (imageFaceArea >= (0.9 * zoomedImageFaceArea)) {
+                livenessStatusCode = LIVENESS_FACE_NOT_ZOOMED_STATUS_CODE;
+            }
+
+            // Validación de blurriness de los rostros
+            if (livenessStatusCode == LIVENESS_OK_STATUS_CODE) {
+                if (!LivenessUtils.analyseNormalizedImagesBlurriness(normalizedFaceImage, normalizedZoomedFaceImage)) {
+                    livenessStatusCode = LIVENESS_BLURRINESS_CHECK_FAILED_STATUS_CODE;
                 }
             }
 
             // Validación de calidad de las imagenes
-            if (livenessStatusCode == 0) {
+            if (livenessStatusCode == LIVENESS_OK_STATUS_CODE) {
                 double imageQuality = LivenessUtils.analyseImageQuality(image);
                 double zoomedImageQuality = LivenessUtils.analyseImageQuality(zoomedImage);
                 if (imageQuality < 0.9 || zoomedImageQuality < 0.9) {
-                    livenessStatusCode = 3;
+                    livenessStatusCode = LIVENESS_IMAGE_QUALITY_CHECK_FAILED_STATUS_CODE;
                 }
             }
 
             // Validación del grado de brillo de las imagenes
-            if (livenessStatusCode == 0) {
+            if (livenessStatusCode == LIVENESS_OK_STATUS_CODE) {
                 double imageBrightness = OpenCVUtils.getBrightness(image);
                 double zoomedImageBrightness = OpenCVUtils.getBrightness(zoomedImage);
                 if (imageBrightness < 100 || imageBrightness > 200 || zoomedImageBrightness < 100 || zoomedImageBrightness > 200) {
-                    livenessStatusCode = 4;
+                    livenessStatusCode = LIVENESS_IMAGE_BRIGHTNESS_CHECK_FAILED_STATUS_CODE;
                 }
             }
 
             // Validación de comparación de histogramas
-            if (livenessStatusCode == 0) {
+            if (livenessStatusCode == LIVENESS_OK_STATUS_CODE) {
                 int[] histSize = {50, 60};
                 float[] ranges = {0, 180, 0, 256};
                 int[] channels = {0, 1};
@@ -255,22 +273,22 @@ public class ApiController {
                 Imgproc.calcHist(Arrays.asList(zoomedImage), new MatOfInt(channels), new Mat(), zoomedImageHist, new MatOfInt(histSize), new MatOfFloat(ranges), false);
                 double histSimilarity = Imgproc.compareHist(imageHist, zoomedImageHist, Imgproc.HISTCMP_CORREL);
                 if (histSimilarity < 0.4) {
-                    livenessStatusCode = 5;
+                    livenessStatusCode = LIVENESS_IMAGE_HISTOGRAM_CHECK_FAILED_STATUS_CODE;
                 }
             }
 
             // Validación de los patrones de Moire
-            if (livenessStatusCode == 0) {
+            if (livenessStatusCode == LIVENESS_OK_STATUS_CODE) {
                 double imageMoirePatternDisturbances = LivenessUtils.analyseImageMoirePatternDisturbances(faceImage);
                 double zoomedImageMoirePatternDisturbances = LivenessUtils.analyseImageMoirePatternDisturbances(zoomedFaceImage);
                 if (imageMoirePatternDisturbances > 0.3 || zoomedImageMoirePatternDisturbances > 0.3) {
-                    livenessStatusCode = 6;
+                    livenessStatusCode = LIVENESS_IMAGE_MOIRE_PATTERN_CHECK_FAILED_STATUS_CODE;
                 }
             }
         }
 
         DataObject response = Data.object();
-        if (livenessStatusCode == 0) {
+        if (livenessStatusCode == LIVENESS_OK_STATUS_CODE) {
             response.set(LIVENESS_PROPERTY_NAME, true);
         } else {
             response.set(LIVENESS_PROPERTY_NAME, false);
@@ -372,4 +390,13 @@ public class ApiController {
         }
         return response;
     }
+
+    /*public static void main(String[] args) throws Exception {
+        OpenCVUtils.initializeLibrary();
+        String livenessFolder = "src/test/resources/liveness/liveness1/";
+        byte[] imageBytes = FileUtils.readFileToByteArray(new File(livenessFolder + "image.jpeg"));
+        byte[] zoomedImageBytes = FileUtils.readFileToByteArray(new File(livenessFolder + "zoomedImage.jpeg"));
+        ApiController controller = new ApiController();
+        System.out.println(controller.checkLiveness3d(imageBytes, zoomedImageBytes));
+    }*/
 }

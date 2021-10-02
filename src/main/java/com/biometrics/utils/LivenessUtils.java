@@ -219,6 +219,13 @@ public class LivenessUtils {
         return disturbancesPercentage;
     }
 
+    public static boolean analyseNormalizedImagesBlurriness(Mat image, Mat image2) {
+        double blurriness1 = OpenCVUtils.getBlurriness(image);
+        double blurriness2 = OpenCVUtils.getBlurriness(image2);
+        double blurrinessCoeficient = blurriness2 / blurriness1;
+        return blurrinessCoeficient >= 1.0 && blurrinessCoeficient <= 3.0;
+    }
+
     private static Mat getForegroundImage(Mat image) {
         return getForegroundImage(image, new Mat());
     }
@@ -296,14 +303,14 @@ public class LivenessUtils {
         return descriptorData;
     }
 
-    private static double[] getLBPDescriptor(Mat image, int pointsCount, int radius, Size regionSize, boolean onlyUniformPatterns, boolean useVariance) {
+    private static double[] getLBPDescriptor(Mat image, int pointsCount, int radius, Size regionSize, boolean onlyUniformPatterns, int valueAgrupationSize, boolean useVariance) {
         double degreesDelta = (Math.PI * 2) / pointsCount;
         int rows = image.rows();
         int cols = image.cols();
         if (regionSize == null) {
             regionSize = new Size(cols, rows);
         }
-        int regionElementsSize = onlyUniformPatterns ? 58 :  256;
+        int regionElementsSize = onlyUniformPatterns ? 58 : (int)Math.ceil(256.0 / valueAgrupationSize);
         int regionsCountX = (int)Math.ceil((double)cols / regionSize.width);
         int regionsCountY = (int)Math.ceil((double)rows / regionSize.height);
         int regionsCount = regionsCountX * regionsCountY;
@@ -331,7 +338,7 @@ public class LivenessUtils {
                 if (!onlyUniformPatterns || normalizedBinaryOffset >= 0) {
                     int subRegionX = (int)Math.floor((double)col / regionSize.width);
                     int subRegionY = (int)Math.floor((double)row / regionSize.height);
-                    int descriptorIndex = (((subRegionY * regionsCountX) + subRegionX) * regionElementsSize) + (onlyUniformPatterns ? normalizedBinaryOffset : newCenterValue);
+                    int descriptorIndex = (((subRegionY * regionsCountX) + subRegionX) * regionElementsSize) + (onlyUniformPatterns ? normalizedBinaryOffset : (int)Math.floor(newCenterValue / (double)valueAgrupationSize));
 
                     if (useVariance) {
                         double neighborValuesAverage = Arrays.stream(neighborValues).average().getAsDouble();
@@ -394,8 +401,9 @@ public class LivenessUtils {
         return lbp;
     }
 
-    private static double[] getLBPVHistogram(Mat image, int pointsCount, int radius, boolean onlyUniformPatters) {
-        double[] histogram = new double[256];
+    private static double[] getLBPVHistogram(Mat image, int pointsCount, int radius, boolean onlyUniformPatters, int valueAgrupationSize) {
+        int histogramSize = (int)Math.ceil(256.0 / valueAgrupationSize);
+        double[] histogram = new double[histogramSize];
         double degreesDelta = (Math.PI * 2) / pointsCount;
         int rows = image.rows();
         int cols = image.cols();
@@ -434,7 +442,8 @@ public class LivenessUtils {
                         neighborValuesVarianceSum += Math.pow(neighborValue - neighborValuesAverage, 2);
                     }
                     double neighborValuesVariance = Math.sqrt(neighborValuesVarianceSum / pointsCount);
-                    histogram[(int)newCenterValue] += neighborValuesVariance;
+                    int histogramIndex = (int)Math.floor(newCenterValue / valueAgrupationSize);
+                    histogram[histogramIndex] += neighborValuesVariance;
                 }
             }
         }
