@@ -205,8 +205,8 @@ public class ApiController {
     public DataObject checkLiveness3d(@Parameter("picture") byte[] imageBytes, @Parameter("zoomedPicture") byte[] zoomedImageBytes) {
 
         /*try {
-            FileUtils.writeByteArrayToFile(new File("src/test/resources/liveness/liveness/image.jpeg"), imageBytes);
-            FileUtils.writeByteArrayToFile(new File("src/test/resources/liveness/liveness/zoomedImage.jpeg"), zoomedImageBytes);
+            FileUtils.writeByteArrayToFile(new File("src/test/resources/liveness/test/image.jpeg"), imageBytes);
+            FileUtils.writeByteArrayToFile(new File("src/test/resources/liveness/test/zoomedImage.jpeg"), zoomedImageBytes);
         } catch (Exception ex) {}*/
 
         int livenessStatusCode = LIVENESS_OK_STATUS_CODE;
@@ -379,7 +379,7 @@ public class ApiController {
 
     /*public static void main(String[] args) throws Exception {
         OpenCVUtils.initializeLibrary();
-        String livenessFolder = "src/test/resources/liveness/liveness1/";
+        String livenessFolder = "src/test/resources/liveness/real/test17/";
         byte[] imageBytes = FileUtils.readFileToByteArray(new File(livenessFolder + "image.jpeg"));
         byte[] zoomedImageBytes = FileUtils.readFileToByteArray(new File(livenessFolder + "zoomedImage.jpeg"));
         ApiController controller = new ApiController();
