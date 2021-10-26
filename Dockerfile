@@ -6,5 +6,4 @@ RUN apt-get update \
   && apt-get clean \
   && apt-get autoremove
 COPY ${JAR_FILE} /opt/app/Biometrics.jar
-EXPOSE 80
 CMD ["java", "-jar", "/opt/app/Biometrics.jar"]

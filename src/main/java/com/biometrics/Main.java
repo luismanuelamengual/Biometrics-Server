@@ -18,7 +18,16 @@ public class Main {
     public static void main(String[] args) {
         initializeLogging();
         initializeOpenCV();
-        WarpApplication application = new WarpApplication(args.length == 1 ? Integer.parseInt(args[0]) : 80);
+        int port = 80;
+        if (args.length == 1) {
+            port = Integer.parseInt(args[0]);
+        } else {
+            String portValue = System.getenv("PORT");
+            if (portValue != null) {
+                port = Integer.parseInt(portValue);
+            }
+        }
+        WarpApplication application = new WarpApplication(port);
         application.addClassPath("com.biometrics");
         application.start();
     }

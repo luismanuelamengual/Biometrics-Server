@@ -26,6 +26,16 @@ Running the image with Fluent support
 sudo docker run -it -p 80:80 --name biometrics-server --log-driver fluentd --log-opt tag="biometrics" --rm luismanuelamengual/biometrics-server:{TAG}
 </pre>
 
+
+## Deploy on heroku
+
+* mvn package
+* heroku login
+* heroku container:login
+* heroku container:push web -a biometrics-server --arg JAR_FILE=target/Biometrics-1.4.1-jar-with-dependencies.jar
+* heroku container:release web -a biometrics-server
+
+
 ## Creating and running fluentd image
 
 Create the image
