@@ -87,7 +87,7 @@ public class MainController {
             request.set(TIMESTAMP_PARAMETER_NAME, System.currentTimeMillis());
         } catch (JWTVerificationException verificationException) {
             response.setStatus(401);
-            throw new ResponseException(verificationException.getMessage());
+            throw new ResponseException("Invalid authorization token");
         }
     }
 
