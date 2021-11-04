@@ -7,15 +7,16 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import org.neogroup.warp.Request;
 import org.neogroup.warp.Response;
 import org.neogroup.warp.controllers.ControllerComponent;
-import org.neogroup.warp.formatters.JsonFormatter;
 import org.neogroup.warp.controllers.routing.After;
 import org.neogroup.warp.controllers.routing.Before;
 import org.neogroup.warp.controllers.routing.Error;
 import org.neogroup.warp.controllers.routing.Get;
 import org.neogroup.warp.data.Data;
 import org.neogroup.warp.data.DataObject;
+import org.neogroup.warp.formatters.JsonFormatter;
 
 import static org.neogroup.warp.Warp.getLogger;
+import static org.neogroup.warp.Warp.getProperty;
 
 @ControllerComponent
 public class MainController {
@@ -39,14 +40,6 @@ public class MainController {
     private static final String TIMESTAMP_PARAMETER_NAME = "timestamp";
 
     private JsonFormatter jsonFormatter = new JsonFormatter();
-    private String implementationTitle;
-    private String implementationVersion;
-
-    public MainController() {
-        Package biometricsPackage = getClass().getPackage();
-        implementationTitle = biometricsPackage.getImplementationTitle();
-        implementationVersion = biometricsPackage.getSpecificationVersion();
-    }
 
     @Before("v1/*")
     public void checkSession(Request request, Response response) {
@@ -93,7 +86,7 @@ public class MainController {
 
     @Get("/")
     public DataObject getAboutInformation() {
-        return Data.object().set(NAME_PARAMETER_NAME, implementationTitle).set(VERSION_PARAMETER_NAME, implementationVersion);
+        return Data.object().set(NAME_PARAMETER_NAME, getProperty("appName")).set(VERSION_PARAMETER_NAME, getProperty("appVersion"));
     }
 
     @Error
@@ -112,7 +105,7 @@ public class MainController {
             if (exception instanceof ResponseException) {
                 getLogger().info(jsonFormatter.format(getLogData(request, result)));
             } else {
-                getLogger().warning(jsonFormatter.format(getLogData(request, result)));
+                getLogger().warn(jsonFormatter.format(getLogData(request, result)));
             }
         }
         return result;
@@ -136,7 +129,7 @@ public class MainController {
         DataObject data = Data.object();
         data.set(METHOD_PARAMETER_NAME, request.getMethod());
         data.set(PATH_PARAMETER_NAME, request.getRequestURI());
-        data.set(VERSION_PARAMETER_NAME, implementationVersion);
+        data.set(VERSION_PARAMETER_NAME, getProperty("appVersion"));
         if (request.has(CLIENT_PARAMETER_NAME)) {
             data.set(CLIENT_PARAMETER_NAME, request.get(CLIENT_PARAMETER_NAME));
         }

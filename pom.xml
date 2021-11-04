@@ -72,7 +72,7 @@
         <dependency>
             <groupId>com.github.luismanuelamengual</groupId>
             <artifactId>NeoGroup-Warp</artifactId>
-            <version>1.1.10</version>
+            <version>1.2.3</version>
         </dependency>
 
         <!-- JWT -->
@@ -106,6 +106,19 @@
             <groupId>net.sourceforge.tess4j</groupId>
             <artifactId>tess4j</artifactId>
             <version>4.5.3</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>ch.qos.logback</groupId>
+                    <artifactId>logback-classic</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- PostgreSQL -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.2.1</version>
         </dependency>
 
         <!-- JACKSON -->

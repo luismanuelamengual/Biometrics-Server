@@ -75,7 +75,7 @@ public class PDF417Utils {
                 throw new RuntimeException("Unrecognized pdf417 type");
             }
         } catch (Exception ex) {
-            getLogger().warning("PDF417 code \"" + pdf417code + "\" could not be parsed: " + ex.getMessage());
+            getLogger().warn("PDF417 code \"" + pdf417code + "\" could not be parsed: " + ex.getMessage());
         }
         return documentData;
     }

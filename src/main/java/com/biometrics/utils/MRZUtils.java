@@ -95,7 +95,7 @@ public class MRZUtils {
                 throw new RuntimeException("Unrecognized mrz code type");
             }
         } catch (Exception ex) {
-            getLogger().warning("MRZ code \"" + mrzCode + "\" could not be parsed: " + ex.getMessage());
+            getLogger().warn("MRZ code \"" + mrzCode + "\" could not be parsed: " + ex.getMessage());
         }
         return documentData;
     }
@@ -206,7 +206,7 @@ public class MRZUtils {
             }
         } catch (Exception ex) {
             if (mrzCodeText != null) {
-                getLogger().warning("MRZ code \"" + mrzCodeText.replaceAll("\n","" ) + "\" could not be processed: " + ex.getMessage());
+                getLogger().warn("MRZ code \"" + mrzCodeText.replaceAll("\n","" ) + "\" could not be processed: " + ex.getMessage());
             }
         }
         return mrzCode;

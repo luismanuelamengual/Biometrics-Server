@@ -1,13 +1,18 @@
 package com.biometrics.api.v1;
 
 import com.biometrics.ResponseException;
-import com.biometrics.utils.*;
+import com.biometrics.resources.LivenessResource;
+import com.biometrics.utils.LivenessUtils;
+import com.biometrics.utils.MRZUtils;
+import com.biometrics.utils.OpenCVUtils;
+import com.biometrics.utils.PDF417Utils;
 import org.neogroup.warp.controllers.ControllerComponent;
 import org.neogroup.warp.controllers.routing.Body;
 import org.neogroup.warp.controllers.routing.Parameter;
 import org.neogroup.warp.controllers.routing.Post;
 import org.neogroup.warp.data.Data;
 import org.neogroup.warp.data.DataObject;
+import org.neogroup.warp.resources.Resources;
 import org.opencv.core.Mat;
 import org.opencv.core.Rect;
 import org.opencv.objdetect.CascadeClassifier;
@@ -35,7 +40,7 @@ public class ApiController {
     private static final String LIVENESS_PROPERTY_NAME = "liveness";
     private static final String REASON_PROPERTY_NAME = "reason";
 
-    private CascadeClassifier faceClassfier;
+    private final CascadeClassifier faceClassfier;
 
     public ApiController() {
         faceClassfier = OpenCVUtils.getClassfierFromResource("cascades/face.xml");
@@ -114,12 +119,22 @@ public class ApiController {
         }
 
         DataObject response = Data.object();
-        if (livenessStatusCode == LIVENESS_OK_STATUS_CODE) {
+        boolean success = livenessStatusCode == LIVENESS_OK_STATUS_CODE;
+        if (success) {
             response.set(LIVENESS_PROPERTY_NAME, true);
         } else {
             response.set(LIVENESS_PROPERTY_NAME, false);
             response.set(REASON_PROPERTY_NAME, livenessStatusCode);
         }
+
+        try {
+            Resources.get(LivenessResource.NAME)
+                .set(LivenessResource.Fields.FACE_IMAGE, imageBytes)
+                .set(LivenessResource.Fields.ZOOMED_FACE_IMAGE, zoomedImageBytes)
+                .set(LivenessResource.Fields.SUCCESS, success)
+                .set(LivenessResource.Fields.STATUS, livenessStatusCode)
+                .insert();
+        } catch (Exception ex) {}
         return response;
     }
 
@@ -193,7 +208,7 @@ public class ApiController {
 
     /*public static void main(String[] args) throws Exception {
         OpenCVUtils.initializeLibrary();
-        String livenessFolder = "src/test/resources/liveness/real/test17/";
+        String livenessFolder = "src/test/resources/liveness/real/test1/";
         byte[] imageBytes = FileUtils.readFileToByteArray(new File(livenessFolder + "image.jpeg"));
         byte[] zoomedImageBytes = FileUtils.readFileToByteArray(new File(livenessFolder + "zoomedImage.jpeg"));
         ApiController controller = new ApiController();
