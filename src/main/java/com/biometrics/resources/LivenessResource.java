@@ -20,7 +20,7 @@ public class LivenessResource extends Resource<DataObject> {
         public static final String ID = "id";
         public static final String DATE = "date";
         public static final String VERSION = "version";
-        public static final String CLIENT_NAME = "clientname";
+        public static final String CLIENT_ID = "clientid";
         public static final String CLIENT_IP = "clientip";
         public static final String FACE_IMAGE = "faceimage";
         public static final String ZOOMED_FACE_IMAGE = "zoomedfaceimage";
@@ -34,7 +34,7 @@ public class LivenessResource extends Resource<DataObject> {
         query.set(Fields.VERSION, getProperty("appVersion"));
         Request request = getRequest();
         if (request != null) {
-            query.set(Fields.CLIENT_NAME, request.get("client"));
+            query.set(Fields.CLIENT_ID, request.get("client"));
             query.set(Fields.CLIENT_IP, request.get("ip"));
         }
         getConnection().execute(query);
