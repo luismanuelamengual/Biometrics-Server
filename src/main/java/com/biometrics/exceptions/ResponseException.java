@@ -1,4 +1,4 @@
-package com.biometrics;
+package com.biometrics.exceptions;
 
 public class ResponseException extends RuntimeException {
 

@@ -14,24 +14,28 @@ import static org.neogroup.warp.Warp.getProperty;
 
 public abstract class Authentication {
 
-    public static final String CLIENT_CLAIM_NAME = "client";
+    public static final String CLIENT_ID_CLAIM_NAME = "clientId";
     public static final String ALLOWED_IPS_CLAIM_NAME = "allowedIps";
 
     private static final String JWT_SECRET_KEY_PROPERTY_NAME = "api_key_secret_key";
     private static final Algorithm AUTHENTICATION_ALGORITHM = Algorithm.HMAC256(getProperty(JWT_SECRET_KEY_PROPERTY_NAME));
     private static final JWTVerifier AUTHENTICATION_VERIFIER = JWT.require(AUTHENTICATION_ALGORITHM).withIssuer("auth0").build();
 
-    public static String createToken(String clientName, Date expirationDate) throws JWTCreationException {
-        return createToken(clientName, expirationDate, null);
+    public static String createToken(int clientId) throws JWTCreationException {
+        return createToken(clientId, null, null);
     }
 
-    public static String createToken(String clientName, String[] allowedIps) throws JWTCreationException {
-        return createToken(clientName, null, allowedIps);
+    public static String createToken(int clientId, Date expirationDate) throws JWTCreationException {
+        return createToken(clientId, expirationDate, null);
     }
 
-    public static String createToken(String clientName, Date expirationDate, String[] allowedIps) throws JWTCreationException {
+    public static String createToken(int clientId, String[] allowedIps) throws JWTCreationException {
+        return createToken(clientId, null, allowedIps);
+    }
+
+    public static String createToken(int clientId, Date expirationDate, String[] allowedIps) throws JWTCreationException {
         JWTCreator.Builder tokenBuilder = JWT.create().withIssuer("auth0");
-        tokenBuilder.withClaim(CLIENT_CLAIM_NAME, clientName);
+        tokenBuilder.withClaim(CLIENT_ID_CLAIM_NAME, clientId);
         if (expirationDate != null) {
             tokenBuilder.withExpiresAt(expirationDate);
         }

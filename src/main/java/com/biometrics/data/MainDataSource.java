@@ -1,4 +1,4 @@
-package com.biometrics;
+package com.biometrics.data;
 
 import org.neogroup.warp.data.DataSource;
 import org.neogroup.warp.data.DataSourceComponent;

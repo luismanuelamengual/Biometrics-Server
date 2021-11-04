@@ -1,9 +1,11 @@
-package com.biometrics;
+package com.biometrics.controllers;
 
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.impl.NullClaim;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.biometrics.Authentication;
+import com.biometrics.exceptions.ResponseException;
 import org.neogroup.warp.Request;
 import org.neogroup.warp.Response;
 import org.neogroup.warp.controllers.ControllerComponent;
@@ -26,7 +28,7 @@ public class MainController {
     private static final String X_FORWARDED_FOR_HEADER_NAME = "X-Forwarded-For";
     private static final String AUTHORIZATION_HEADER_NAME = "Authorization";
     private static final String AUTHORIZATION_BEARER = "Bearer";
-    private static final String CLIENT_PARAMETER_NAME = "client";
+    private static final String CLIENT_ID_PARAMETER_NAME = "client";
     private static final String IP_PARAMETER_NAME = "ip";
     private static final String SUCCESS_PARAMETER_NAME = "success";
     private static final String DATA_PARAMETER_NAME = "data";
@@ -39,9 +41,9 @@ public class MainController {
     private static final String VERSION_PARAMETER_NAME = "version";
     private static final String TIMESTAMP_PARAMETER_NAME = "timestamp";
 
-    private JsonFormatter jsonFormatter = new JsonFormatter();
+    private final JsonFormatter jsonFormatter = new JsonFormatter();
 
-    @Before("v1/*")
+    @Before("api/*")
     public void checkSession(Request request, Response response) {
         String authorizationHeader = request.getHeader(AUTHORIZATION_HEADER_NAME);
         if (authorizationHeader == null) {
@@ -61,7 +63,7 @@ public class MainController {
         try {
             DecodedJWT verifiedToken = Authentication.decodeToken(token);
             String ip = getClientIp(request);
-            request.set(CLIENT_PARAMETER_NAME, verifiedToken.getClaim(Authentication.CLIENT_CLAIM_NAME).asString());
+            request.set(CLIENT_ID_PARAMETER_NAME, verifiedToken.getClaim(Authentication.CLIENT_ID_CLAIM_NAME).asInt());
             request.set(IP_PARAMETER_NAME, ip);
             Claim allowedIpsClaim = verifiedToken.getClaim(Authentication.ALLOWED_IPS_CLAIM_NAME);
             if (!(allowedIpsClaim instanceof NullClaim)) {
@@ -130,8 +132,8 @@ public class MainController {
         data.set(METHOD_PARAMETER_NAME, request.getMethod());
         data.set(PATH_PARAMETER_NAME, request.getRequestURI());
         data.set(VERSION_PARAMETER_NAME, getProperty("appVersion"));
-        if (request.has(CLIENT_PARAMETER_NAME)) {
-            data.set(CLIENT_PARAMETER_NAME, request.get(CLIENT_PARAMETER_NAME));
+        if (request.has(CLIENT_ID_PARAMETER_NAME)) {
+            data.set(CLIENT_ID_PARAMETER_NAME, request.get(CLIENT_ID_PARAMETER_NAME));
         }
         if (request.has(IP_PARAMETER_NAME)) {
             data.set(IP_PARAMETER_NAME, request.get(IP_PARAMETER_NAME));
