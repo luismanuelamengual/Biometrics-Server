@@ -3,6 +3,7 @@ package com.biometrics.resources;
 import org.neogroup.warp.Request;
 import org.neogroup.warp.data.DataObject;
 import org.neogroup.warp.data.query.InsertQuery;
+import org.neogroup.warp.data.query.SelectQuery;
 import org.neogroup.warp.resources.Resource;
 import org.neogroup.warp.resources.ResourceComponent;
 
@@ -39,5 +40,10 @@ public class LivenessResource extends Resource<DataObject> {
         }
         getConnection().execute(query);
         return null;
+    }
+
+    @Override
+    public Collection<DataObject> find(SelectQuery query) {
+        return getConnection().query(query);
     }
 }

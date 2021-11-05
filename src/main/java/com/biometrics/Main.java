@@ -37,6 +37,9 @@ public class Main {
         if (appName != null && appVersion != null) {
             setProperty("appName", appName);
             setProperty("appVersion", appVersion);
+        } else {
+            setProperty("appName", "Biometrics");
+            setProperty("appVersion", "0.0");
         }
     }
 }

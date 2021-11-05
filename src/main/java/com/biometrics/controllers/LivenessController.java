@@ -8,10 +8,14 @@ import org.neogroup.warp.controllers.routing.Parameter;
 import org.neogroup.warp.controllers.routing.Post;
 import org.neogroup.warp.data.Data;
 import org.neogroup.warp.data.DataObject;
+import org.neogroup.warp.data.query.fields.SortDirection;
 import org.neogroup.warp.resources.Resources;
 import org.opencv.core.Mat;
 import org.opencv.core.Rect;
 import org.opencv.objdetect.CascadeClassifier;
+
+import java.util.Base64;
+import java.util.Collection;
 
 @ControllerComponent("api/liveness")
 public class LivenessController {
@@ -32,6 +36,21 @@ public class LivenessController {
 
     public LivenessController() {
         faceClassfier = OpenCVUtils.getClassfierFromResource("cascades/face.xml");
+    }
+
+    @Post("/")
+    public Collection<DataObject> getLivenessSessions() {
+        return Resources.get(LivenessResource.NAME).limit(100).orderBy(LivenessResource.Fields.ID, SortDirection.DESC).select(LivenessResource.Fields.ID, LivenessResource.Fields.CLIENT_IP, LivenessResource.Fields.CLIENT_ID, LivenessResource.Fields.STATUS, LivenessResource.Fields.DATE, LivenessResource.Fields.SUCCESS, LivenessResource.Fields.VERSION).find();
+    }
+
+    @Post("/:id")
+    public DataObject getLivenessSession(@Parameter("id") int livenessId) throws Exception {
+        DataObject livenessSession = Resources.get(LivenessResource.NAME).where(LivenessResource.Fields.ID, livenessId).first();
+        if (livenessSession != null) {
+            livenessSession.set(LivenessResource.Fields.FACE_IMAGE, "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(livenessSession.get(LivenessResource.Fields.FACE_IMAGE)));
+            livenessSession.set(LivenessResource.Fields.ZOOMED_FACE_IMAGE, "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(livenessSession.get(LivenessResource.Fields.ZOOMED_FACE_IMAGE)));
+        }
+        return livenessSession;
     }
 
     @Post("verify_liveness")
