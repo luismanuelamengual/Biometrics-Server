@@ -1,9 +1,9 @@
 package com.biometrics.resources;
 
-import org.neogroup.warp.Request;
 import org.neogroup.warp.data.DataObject;
 import org.neogroup.warp.data.query.InsertQuery;
 import org.neogroup.warp.data.query.SelectQuery;
+import org.neogroup.warp.http.Request;
 import org.neogroup.warp.resources.Resource;
 import org.neogroup.warp.resources.ResourceComponent;
 

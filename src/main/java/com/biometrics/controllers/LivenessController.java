@@ -4,7 +4,7 @@ import com.biometrics.resources.LivenessResource;
 import com.biometrics.utils.LivenessUtils;
 import com.biometrics.utils.OpenCVUtils;
 import org.neogroup.warp.controllers.ControllerComponent;
-import org.neogroup.warp.controllers.routing.Parameter;
+import org.neogroup.warp.controllers.routing.Param;
 import org.neogroup.warp.controllers.routing.Post;
 import org.neogroup.warp.data.Data;
 import org.neogroup.warp.data.DataObject;
@@ -44,7 +44,7 @@ public class LivenessController {
     }
 
     @Post("/:id")
-    public DataObject getLivenessSession(@Parameter("id") int livenessId) throws Exception {
+    public DataObject getLivenessSession(@Param("id") int livenessId) throws Exception {
         DataObject livenessSession = Resources.get(LivenessResource.NAME).where(LivenessResource.Fields.ID, livenessId).first();
         if (livenessSession != null) {
             livenessSession.set(LivenessResource.Fields.FACE_IMAGE, "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(livenessSession.get(LivenessResource.Fields.FACE_IMAGE)));
@@ -54,7 +54,7 @@ public class LivenessController {
     }
 
     @Post("verify_liveness")
-    public DataObject verifyLiveness(@Parameter("picture") byte[] imageBytes, @Parameter("zoomedPicture") byte[] zoomedImageBytes) {
+    public DataObject verifyLiveness(@Param("picture") byte[] imageBytes, @Param("zoomedPicture") byte[] zoomedImageBytes) {
 
         int status = LIVENESS_OK_STATUS_CODE;
         Mat image = OpenCVUtils.getImage(imageBytes);

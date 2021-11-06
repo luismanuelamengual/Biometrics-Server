@@ -5,7 +5,7 @@ import com.biometrics.utils.MRZUtils;
 import com.biometrics.utils.PDF417Utils;
 import org.neogroup.warp.controllers.ControllerComponent;
 import org.neogroup.warp.controllers.routing.Body;
-import org.neogroup.warp.controllers.routing.Parameter;
+import org.neogroup.warp.controllers.routing.Param;
 import org.neogroup.warp.controllers.routing.Post;
 import org.neogroup.warp.data.Data;
 import org.neogroup.warp.data.DataObject;
@@ -23,7 +23,7 @@ public class DocumentsController {
     private static final String INFORMATION_PROPERTY_NAME = "information";
 
     @Post("scan_document_data")
-    public DataObject scanDocument(@Parameter("documentFront") byte[] documentFront, @Parameter("documentBack") byte[] documentBack) {
+    public DataObject scanDocument(@Param("documentFront") byte[] documentFront, @Param("documentBack") byte[] documentBack) {
 
         DataObject response = null;
         String pdf417RawText = PDF417Utils.readCode(documentFront);
