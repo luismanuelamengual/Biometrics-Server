@@ -38,12 +38,12 @@ public class LivenessController {
         faceClassfier = OpenCVUtils.getClassfierFromResource("cascades/face.xml");
     }
 
-    @Post("/")
+    @Post("/sessions")
     public Collection<DataObject> getLivenessSessions() {
         return Resources.get(LivenessResource.NAME).limit(100).orderBy(LivenessResource.Fields.ID, SortDirection.DESC).select(LivenessResource.Fields.ID, LivenessResource.Fields.CLIENT_IP, LivenessResource.Fields.CLIENT_ID, LivenessResource.Fields.STATUS, LivenessResource.Fields.DATE, LivenessResource.Fields.SUCCESS, LivenessResource.Fields.VERSION).find();
     }
 
-    @Post("/:id")
+    @Post("/sessions/:id")
     public DataObject getLivenessSession(@Param("id") int livenessId) throws Exception {
         DataObject livenessSession = Resources.get(LivenessResource.NAME).where(LivenessResource.Fields.ID, livenessId).first();
         if (livenessSession != null) {
@@ -136,7 +136,9 @@ public class LivenessController {
                     .set(LivenessResource.Fields.SUCCESS, success)
                     .set(LivenessResource.Fields.STATUS, status)
                     .insert();
-        } catch (Exception ex) {}
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
         return response;
     }
 }
