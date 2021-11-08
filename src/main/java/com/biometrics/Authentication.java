@@ -15,6 +15,7 @@ import static org.neogroup.warp.Warp.getProperty;
 public abstract class Authentication {
 
     public static final String CLIENT_ID_CLAIM_NAME = "clientId";
+    public static final String ALLOWED_DOMAINS_CLAIM_NAME = "allowedDomains";
     public static final String ALLOWED_IPS_CLAIM_NAME = "allowedIps";
 
     private static final String JWT_SECRET_KEY_PROPERTY_NAME = "api_key_secret_key";
@@ -22,22 +23,25 @@ public abstract class Authentication {
     private static final JWTVerifier AUTHENTICATION_VERIFIER = JWT.require(AUTHENTICATION_ALGORITHM).withIssuer("auth0").build();
 
     public static String createToken(int clientId) throws JWTCreationException {
-        return createToken(clientId, null, null);
+        return createToken(clientId, null, null, null);
     }
 
     public static String createToken(int clientId, Date expirationDate) throws JWTCreationException {
-        return createToken(clientId, expirationDate, null);
+        return createToken(clientId, expirationDate, null, null);
     }
 
-    public static String createToken(int clientId, String[] allowedIps) throws JWTCreationException {
-        return createToken(clientId, null, allowedIps);
+    public static String createToken(int clientId, String[] allowedDomains) throws JWTCreationException {
+        return createToken(clientId, null, allowedDomains, null);
     }
 
-    public static String createToken(int clientId, Date expirationDate, String[] allowedIps) throws JWTCreationException {
+    public static String createToken(int clientId, Date expirationDate, String[] allowedDomains, String[] allowedIps) throws JWTCreationException {
         JWTCreator.Builder tokenBuilder = JWT.create().withIssuer("auth0");
         tokenBuilder.withClaim(CLIENT_ID_CLAIM_NAME, clientId);
         if (expirationDate != null) {
             tokenBuilder.withExpiresAt(expirationDate);
+        }
+        if (allowedDomains != null && allowedDomains.length > 0) {
+            tokenBuilder.withArrayClaim(ALLOWED_DOMAINS_CLAIM_NAME, allowedDomains);
         }
         if (allowedIps != null && allowedIps.length > 0) {
             tokenBuilder.withArrayClaim(ALLOWED_IPS_CLAIM_NAME, allowedIps);
