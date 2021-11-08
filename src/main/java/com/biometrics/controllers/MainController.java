@@ -13,8 +13,10 @@ import org.neogroup.warp.controllers.routing.Error;
 import org.neogroup.warp.controllers.routing.Get;
 import org.neogroup.warp.data.Data;
 import org.neogroup.warp.data.DataObject;
+import org.neogroup.warp.http.Header;
 import org.neogroup.warp.http.Request;
 import org.neogroup.warp.http.Response;
+import org.neogroup.warp.http.StatusCode;
 import org.neogroup.warp.utils.formatters.JsonFormatter;
 
 import static org.neogroup.warp.Warp.getLogger;
@@ -26,7 +28,6 @@ public class MainController {
     private static final String BASE_PATH = "/";
     private static final char IP_SEPARATOR = ',';
     private static final String X_FORWARDED_FOR_HEADER_NAME = "X-Forwarded-For";
-    private static final String AUTHORIZATION_HEADER_NAME = "Authorization";
     private static final String AUTHORIZATION_BEARER = "Bearer";
     private static final String CLIENT_ID_PARAMETER_NAME = "client";
     private static final String IP_PARAMETER_NAME = "ip";
@@ -45,18 +46,18 @@ public class MainController {
 
     @Before("api/*")
     public void checkSession(Request request, Response response) {
-        String authorizationHeader = request.getHeader(AUTHORIZATION_HEADER_NAME);
+        String authorizationHeader = request.getHeader(Header.AUTHORIZATION);
         if (authorizationHeader == null) {
-            response.setStatus(401);
+            response.setStatus(StatusCode.UNAUTHORIZED);
             throw new ResponseException("Missing authorization header");
         }
         String[] authorizationTokens = authorizationHeader.split(" ");
         if (!authorizationTokens[0].equals(AUTHORIZATION_BEARER)) {
-            response.setStatus(401);
+            response.setStatus(StatusCode.UNAUTHORIZED);
             throw new ResponseException("Authorization header is expecting a JWT token");
         }
         if (authorizationTokens.length < 2) {
-            response.setStatus(401);
+            response.setStatus(StatusCode.UNAUTHORIZED);
             throw new ResponseException("Invalid authorization header");
         }
         String token = authorizationTokens[1];
@@ -81,7 +82,7 @@ public class MainController {
             }
             request.set(TIMESTAMP_PARAMETER_NAME, System.currentTimeMillis());
         } catch (JWTVerificationException verificationException) {
-            response.setStatus(401);
+            response.setStatus(StatusCode.UNAUTHORIZED);
             throw new ResponseException("Invalid authorization token");
         }
     }
