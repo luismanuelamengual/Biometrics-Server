@@ -1,6 +1,6 @@
 package com.biometrics;
 
-import com.biometrics.controllers.DocumentsController;
+import com.biometrics.controllers.ApiController;
 import org.junit.jupiter.api.Test;
 import org.neogroup.warp.data.DataObject;
 
@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 public class BarcodeScanTest extends BaseTest {
 
-    private DocumentsController documents = new DocumentsController();
+    protected ApiController api = new ApiController();
 
     @Test
     public void testBarcode1() {
@@ -98,7 +98,7 @@ public class BarcodeScanTest extends BaseTest {
 
     private void testBarcodeResponse(String resourceName) {
         try {
-            DataObject response = documents.scanBarcode(getImageFromResource(resourceName));
+            DataObject response = api.scanBarcode(getImageFromResource(resourceName));
             assertTrue(response.has("raw"), "Barcode \"raw\" field was not found on file \"" + resourceName + "\" !!");
             assertTrue(response.has("information"), "Barcode \"information\" field was not found on file \"" + resourceName + "\" !!");
         } catch (Exception exception) {

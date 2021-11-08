@@ -1,6 +1,6 @@
 package com.biometrics;
 
-import com.biometrics.controllers.DocumentsController;
+import com.biometrics.controllers.ApiController;
 import org.junit.jupiter.api.Test;
 import org.neogroup.warp.data.DataObject;
 
@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class MRZScanTest extends BaseTest {
 
-    private DocumentsController documents = new DocumentsController();
+    protected ApiController api = new ApiController();
 
     @Test
     public void testMRZ1() {
@@ -112,7 +112,7 @@ public class MRZScanTest extends BaseTest {
 
     private void testMRZResponse(String resourceName) {
         try {
-            DataObject response = documents.scanMRZ(getImageFromResource(resourceName));
+            DataObject response = api.scanMRZ(getImageFromResource(resourceName));
             assertTrue(response.has("raw"), "MRZ \"raw\" field was not found on file \"" + resourceName + "\" !!");
             assertTrue(response.has("information"), "MRZ \"information\" field was not found on file \"" + resourceName + "\" !!");
         } catch (Exception exception) {
