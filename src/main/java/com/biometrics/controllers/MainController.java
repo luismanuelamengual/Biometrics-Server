@@ -17,7 +17,6 @@ import org.neogroup.warp.http.Header;
 import org.neogroup.warp.http.Request;
 import org.neogroup.warp.http.Response;
 import org.neogroup.warp.http.StatusCode;
-import org.neogroup.warp.utils.formatters.JsonFormatter;
 
 import static org.neogroup.warp.Warp.getLogger;
 import static org.neogroup.warp.Warp.getProperty;
