@@ -1,13 +1,14 @@
 package com.biometrics.controllers;
 
+import com.biometrics.exceptions.ResponseException;
 import com.biometrics.resources.LivenessResource;
 import org.neogroup.warp.controllers.ControllerComponent;
+import org.neogroup.warp.controllers.routing.Before;
 import org.neogroup.warp.controllers.routing.Get;
 import org.neogroup.warp.controllers.routing.Param;
 import org.neogroup.warp.data.DataObject;
 import org.neogroup.warp.data.query.fields.SortDirection;
-import org.neogroup.warp.http.Header;
-import org.neogroup.warp.http.MediaType;
+import org.neogroup.warp.http.*;
 import org.neogroup.warp.resources.Resources;
 
 import java.util.Collection;
@@ -16,6 +17,21 @@ import static org.neogroup.warp.Warp.getResponse;
 
 @ControllerComponent("clients/:sessionId")
 public class ClientsController {
+
+    private static final String ADMINISTRATOR_SESSION_ID = "8cf3e790-6cd6-483b-9297-412b30d61328";
+
+    @Before("*")
+    public void checkSession(Request request, Response response) {
+        String sessionId = request.get("sessionId");
+        if (sessionId == null || sessionId.isEmpty()) {
+            response.setStatus(StatusCode.UNAUTHORIZED);
+            throw new ResponseException("SessionId not found !!");
+        }
+        if (!sessionId.equals(ADMINISTRATOR_SESSION_ID)) {
+            response.setStatus(StatusCode.UNAUTHORIZED);
+            throw new ResponseException("Invalid sessionId !!");
+        }
+    }
 
     @Get("liveness")
     public Collection<DataObject> getLivenessSessions(@Param("sessionId") String sessionId, @Param(name="limit", required = false) Integer limit) {
