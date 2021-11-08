@@ -42,8 +42,6 @@ public class MainController {
     private static final String VERSION_PARAMETER_NAME = "version";
     private static final String TIMESTAMP_PARAMETER_NAME = "timestamp";
 
-    private final JsonFormatter jsonFormatter = new JsonFormatter();
-
     @Before("api/*")
     public void checkSession(Request request, Response response) {
         String authorizationHeader = request.getHeader(Header.AUTHORIZATION);
@@ -106,9 +104,9 @@ public class MainController {
         result.set(MESSAGE_PARAMETER_NAME, errorMessage);
         if (!request.getRequestURI().equals(BASE_PATH)) {
             if (exception instanceof ResponseException) {
-                getLogger().info(jsonFormatter.format(getLogData(request, result)));
+                getLogger().info(getLogData(request, result).toString());
             } else {
-                getLogger().warn(jsonFormatter.format(getLogData(request, result)));
+                getLogger().warn(getLogData(request, result).toString());
             }
         }
         return result;
@@ -123,7 +121,7 @@ public class MainController {
             result.set(DATA_PARAMETER_NAME, responseObject);
         }
         if (!request.getRequestURI().equals(BASE_PATH)) {
-            getLogger().info(jsonFormatter.format(getLogData(request, result)));
+            getLogger().info(getLogData(request, result).toString());
         }
         return result;
     }
