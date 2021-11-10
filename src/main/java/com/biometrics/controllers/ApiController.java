@@ -108,71 +108,7 @@ public class ApiController {
 
     @Post("verify_liveness")
     public DataObject verifyLiveness(@Param("picture") byte[] imageBytes, @Param("zoomedPicture") byte[] zoomedImageBytes) {
-
-        int status = LIVENESS_OK_STATUS_CODE;
-        Mat image = OpenCVUtils.getImage(imageBytes);
-        Mat zoomedImage = OpenCVUtils.getImage(zoomedImageBytes);
-
-        // Validación de que existen rostros en las 2 imagenes
-        Rect faceRect = OpenCVUtils.detectBiggestFeatureRect(image, faceClassfier);
-        Rect zoomedFaceRect = OpenCVUtils.detectBiggestFeatureRect(zoomedImage, faceClassfier);
-        if (faceRect == null || zoomedFaceRect == null) {
-            status = LIVENESS_FACE_NOT_FOUND_STATUS_CODE;
-        }
-
-        if (status == LIVENESS_OK_STATUS_CODE) {
-            // Obtencioń de los rostros en las imagenes
-            Mat faceImage = image.submat(faceRect);
-            Mat zoomedFaceImage = zoomedImage.submat(zoomedFaceRect);
-            int imagesSize = 400;
-            Mat normalizedFaceImage = new Mat();
-            Mat normalizedZoomedFaceImage = new Mat();
-            OpenCVUtils.resize(faceImage, normalizedFaceImage, imagesSize, imagesSize, imagesSize, imagesSize);
-            OpenCVUtils.resize(zoomedFaceImage, normalizedZoomedFaceImage, imagesSize, imagesSize, imagesSize, imagesSize);
-
-            // Validación de que el rostro con zoom sea efectivamente más grande que el otro
-            double imageFaceArea = faceRect.area();
-            double zoomedImageFaceArea = zoomedFaceRect.area();
-            if (imageFaceArea >= (0.9 * zoomedImageFaceArea)) {
-                status = LIVENESS_FACE_NOT_ZOOMED_STATUS_CODE;
-            }
-
-            // Validación de blurriness de los rostros
-            if (status == LIVENESS_OK_STATUS_CODE) {
-                if (!LivenessUtils.analyseNormalizedImagesBlurriness(normalizedFaceImage, normalizedZoomedFaceImage)) {
-                    status = LIVENESS_BLURRINESS_CHECK_FAILED_STATUS_CODE;
-                }
-            }
-
-            // Validación de calidad de las imagenes
-            if (status == LIVENESS_OK_STATUS_CODE) {
-                if (!LivenessUtils.analyseImageQuality(image) || !LivenessUtils.analyseImageQuality(zoomedImage)) {
-                    status = LIVENESS_IMAGE_QUALITY_CHECK_FAILED_STATUS_CODE;
-                }
-            }
-
-            // Validación del grado de brillo de las imagenes
-            if (status == LIVENESS_OK_STATUS_CODE) {
-                if (!LivenessUtils.analyseImageBrightness(image) || !LivenessUtils.analyseImageBrightness(zoomedImage)) {
-                    status = LIVENESS_IMAGE_BRIGHTNESS_CHECK_FAILED_STATUS_CODE;
-                }
-            }
-
-            // Validación de comparación de histogramas
-            if (status == LIVENESS_OK_STATUS_CODE) {
-                if (!LivenessUtils.analyseImageHistograms(image, zoomedImage)) {
-                    status = LIVENESS_IMAGE_HISTOGRAM_CHECK_FAILED_STATUS_CODE;
-                }
-            }
-
-            // Validación de los patrones de Moire
-            if (status == LIVENESS_OK_STATUS_CODE) {
-                if (!LivenessUtils.analyseImageMoirePatternDisturbances(faceImage) || !LivenessUtils.analyseImageMoirePatternDisturbances(zoomedFaceImage)) {
-                    status = LIVENESS_IMAGE_MOIRE_PATTERN_CHECK_FAILED_STATUS_CODE;
-                }
-            }
-        }
-
+        int status = verifyLivenessImages(imageBytes, zoomedImageBytes);
         DataObject response = Data.object();
         boolean success = status == LIVENESS_OK_STATUS_CODE;
         if (success) {
@@ -273,5 +209,72 @@ public class ApiController {
             clientIp = clientIp.substring(0, index);
         }
         return clientIp;
+    }
+
+    public int verifyLivenessImages(byte[] imageBytes, byte[] zoomedImageBytes) {
+        int status = LIVENESS_OK_STATUS_CODE;
+        Mat image = OpenCVUtils.getImage(imageBytes);
+        Mat zoomedImage = OpenCVUtils.getImage(zoomedImageBytes);
+
+        // Validación de que existen rostros en las 2 imagenes
+        Rect faceRect = OpenCVUtils.detectBiggestFeatureRect(image, faceClassfier);
+        Rect zoomedFaceRect = OpenCVUtils.detectBiggestFeatureRect(zoomedImage, faceClassfier);
+        if (faceRect == null || zoomedFaceRect == null) {
+            status = LIVENESS_FACE_NOT_FOUND_STATUS_CODE;
+        }
+
+        if (status == LIVENESS_OK_STATUS_CODE) {
+            // Obtencioń de los rostros en las imagenes
+            Mat faceImage = image.submat(faceRect);
+            Mat zoomedFaceImage = zoomedImage.submat(zoomedFaceRect);
+            int imagesSize = 400;
+            Mat normalizedFaceImage = new Mat();
+            Mat normalizedZoomedFaceImage = new Mat();
+            OpenCVUtils.resize(faceImage, normalizedFaceImage, imagesSize, imagesSize, imagesSize, imagesSize);
+            OpenCVUtils.resize(zoomedFaceImage, normalizedZoomedFaceImage, imagesSize, imagesSize, imagesSize, imagesSize);
+
+            // Validación de que el rostro con zoom sea efectivamente más grande que el otro
+            double imageFaceArea = faceRect.area();
+            double zoomedImageFaceArea = zoomedFaceRect.area();
+            if (imageFaceArea >= (0.9 * zoomedImageFaceArea)) {
+                status = LIVENESS_FACE_NOT_ZOOMED_STATUS_CODE;
+            }
+
+            // Validación de blurriness de los rostros
+            if (status == LIVENESS_OK_STATUS_CODE) {
+                if (!LivenessUtils.analyseNormalizedImagesBlurriness(normalizedFaceImage, normalizedZoomedFaceImage)) {
+                    status = LIVENESS_BLURRINESS_CHECK_FAILED_STATUS_CODE;
+                }
+            }
+
+            // Validación de calidad de las imagenes
+            if (status == LIVENESS_OK_STATUS_CODE) {
+                if (!LivenessUtils.analyseImageQuality(image) || !LivenessUtils.analyseImageQuality(zoomedImage)) {
+                    status = LIVENESS_IMAGE_QUALITY_CHECK_FAILED_STATUS_CODE;
+                }
+            }
+
+            // Validación del grado de brillo de las imagenes
+            if (status == LIVENESS_OK_STATUS_CODE) {
+                if (!LivenessUtils.analyseImageBrightness(image) || !LivenessUtils.analyseImageBrightness(zoomedImage)) {
+                    status = LIVENESS_IMAGE_BRIGHTNESS_CHECK_FAILED_STATUS_CODE;
+                }
+            }
+
+            // Validación de comparación de histogramas
+            if (status == LIVENESS_OK_STATUS_CODE) {
+                if (!LivenessUtils.analyseImageHistograms(image, zoomedImage)) {
+                    status = LIVENESS_IMAGE_HISTOGRAM_CHECK_FAILED_STATUS_CODE;
+                }
+            }
+
+            // Validación de los patrones de Moire
+            if (status == LIVENESS_OK_STATUS_CODE) {
+                if (!LivenessUtils.analyseImageMoirePatternDisturbances(faceImage) || !LivenessUtils.analyseImageMoirePatternDisturbances(zoomedFaceImage)) {
+                    status = LIVENESS_IMAGE_MOIRE_PATTERN_CHECK_FAILED_STATUS_CODE;
+                }
+            }
+        }
+        return status;
     }
 }

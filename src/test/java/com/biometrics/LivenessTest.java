@@ -41,9 +41,9 @@ public class LivenessTest extends BaseTest {
         try {
             byte[] imageBytes = FileUtils.readFileToByteArray(new File(livenessFolder + "/image.jpeg"));
             byte[] zoomedImageBytes = FileUtils.readFileToByteArray(new File(livenessFolder + "/zoomedImage.jpeg"));
-            DataObject response = this.api.verifyLiveness(imageBytes, zoomedImageBytes);
-            System.out.println(response);
-            assertEquals(liveness, response.get("liveness"));
+            int status = this.api.verifyLivenessImages(imageBytes, zoomedImageBytes);
+            System.out.println("Liveness status: " + (status == 0? "REAL" : "FAKE (" + status + ")"));
+            assertEquals(liveness, status == 0);
         } catch (Exception exception) {
             fail("Liveness test to folder \"" + livenessFolder + "\" failed !!");
         }
