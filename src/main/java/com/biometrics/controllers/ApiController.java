@@ -54,7 +54,6 @@ public class ApiController {
     private static final String TIMESTAMP_PARAMETER_NAME = "timestamp";
 
     private static final char IP_SEPARATOR = ',';
-    private static final String X_FORWARDED_FOR_HEADER_NAME = "X-Forwarded-For";
     private static final String AUTHORIZATION_BEARER = "Bearer";
 
     private final CascadeClassifier faceClassfier;
@@ -265,7 +264,7 @@ public class ApiController {
     }
 
     private String getClientIp(Request request) {
-        String clientIp = request.getHeader(X_FORWARDED_FOR_HEADER_NAME);
+        String clientIp = request.getHeader(Header.X_FORWARDED_FOR);
         if (clientIp == null || clientIp.isEmpty()) {
             clientIp = request.getRemoteAddress();
         }
