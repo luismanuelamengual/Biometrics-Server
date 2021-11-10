@@ -15,7 +15,7 @@ import static org.neogroup.warp.Warp.getProperty;
 public abstract class Authentication {
 
     public static final String CLIENT_ID_CLAIM_NAME = "clientId";
-    public static final String ALLOWED_DOMAINS_CLAIM_NAME = "allowedDomains";
+    public static final String ALLOWED_HOSTS_CLAIM_NAME = "allowedHosts";
     public static final String ALLOWED_IPS_CLAIM_NAME = "allowedIps";
 
     private static final String JWT_SECRET_KEY_PROPERTY_NAME = "api_key_secret_key";
@@ -34,14 +34,14 @@ public abstract class Authentication {
         return createToken(clientId, null, allowedDomains, null);
     }
 
-    public static String createToken(int clientId, Date expirationDate, String[] allowedDomains, String[] allowedIps) throws JWTCreationException {
+    public static String createToken(int clientId, Date expirationDate, String[] allowedHosts, String[] allowedIps) throws JWTCreationException {
         JWTCreator.Builder tokenBuilder = JWT.create().withIssuer("auth0");
         tokenBuilder.withClaim(CLIENT_ID_CLAIM_NAME, clientId);
         if (expirationDate != null) {
             tokenBuilder.withExpiresAt(expirationDate);
         }
-        if (allowedDomains != null && allowedDomains.length > 0) {
-            tokenBuilder.withArrayClaim(ALLOWED_DOMAINS_CLAIM_NAME, allowedDomains);
+        if (allowedHosts != null && allowedHosts.length > 0) {
+            tokenBuilder.withArrayClaim(ALLOWED_HOSTS_CLAIM_NAME, allowedHosts);
         }
         if (allowedIps != null && allowedIps.length > 0) {
             tokenBuilder.withArrayClaim(ALLOWED_IPS_CLAIM_NAME, allowedIps);

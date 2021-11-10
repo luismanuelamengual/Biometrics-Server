@@ -90,10 +90,11 @@ public class ApiController {
         try {
             DecodedJWT verifiedToken = Authentication.decodeToken(token);
             String ip = getClientIp(request);
+            String host = getHost(request);
             request.set(CLIENT_ID_PARAMETER_NAME, verifiedToken.getClaim(Authentication.CLIENT_ID_CLAIM_NAME).asInt());
             request.set(IP_PARAMETER_NAME, ip);
             request.set(TIMESTAMP_PARAMETER_NAME, System.currentTimeMillis());
-            request.set(HOST_PARAMETER_NAME, getHost(request));
+            request.set(HOST_PARAMETER_NAME, host);
 
             Claim allowedIpsClaim = verifiedToken.getClaim(Authentication.ALLOWED_IPS_CLAIM_NAME);
             if (!(allowedIpsClaim instanceof NullClaim)) {
@@ -109,6 +110,22 @@ public class ApiController {
                     throw new ResponseException("Ip \"" + ip + "\" is not allowed !!");
                 }
             }
+
+            Claim allowedHostsClaim = verifiedToken.getClaim(Authentication.ALLOWED_HOSTS_CLAIM_NAME);
+            if (!(allowedHostsClaim instanceof NullClaim)) {
+                String[] allowedHosts = allowedHostsClaim.asArray(String.class);
+                boolean allowed = false;
+                for (String allowedHost : allowedHosts) {
+                    if (allowedHost.equals(host)) {
+                        allowed = true;
+                        break;
+                    }
+                }
+                if (!allowed) {
+                    throw new ResponseException("Host \"" + host + "\" is not allowed !!");
+                }
+            }
+
         } catch (JWTVerificationException verificationException) {
             response.setStatus(StatusCode.UNAUTHORIZED);
             throw new ResponseException("Invalid authorization token");
