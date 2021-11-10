@@ -37,9 +37,9 @@ public class PlatformController {
     @Get("liveness")
     public Collection<DataObject> getLivenessSessions(@Param(name="limit", required = false) Integer limit) {
         Collection<DataObject> livenessSessions = Resources.get(LivenessResource.NAME).limit(limit != null? limit : 10).orderBy(LivenessResource.Fields.ID, SortDirection.DESC).select(LivenessResource.Fields.ID, LivenessResource.Fields.IP_ADDRESS, LivenessResource.Fields.CLIENT_ID, LivenessResource.Fields.STATUS, LivenessResource.Fields.DATE, LivenessResource.Fields.SUCCESS, LivenessResource.Fields.VERSION, LivenessResource.Fields.HOST, LivenessResource.Fields.DEVICE).find();
-        String sessionId = getRequest().get("sessionId");
+        Request request = getRequest();
         for (DataObject livenessSession : livenessSessions) {
-            processLivenessSession(sessionId, livenessSession);
+            processLivenessSession(request, livenessSession);
         }
         return livenessSessions;
     }
@@ -50,8 +50,7 @@ public class PlatformController {
         if (livenessSession == null) {
             throw new RuntimeException("Liveness session \"" + livenessId + "\" not found !!");
         }
-        String sessionId = getRequest().get("sessionId");
-        processLivenessSession(sessionId, livenessSession);
+        processLivenessSession(getRequest(), livenessSession);
         return livenessSession;
     }
 
@@ -73,9 +72,11 @@ public class PlatformController {
         getResponse().addHeader(Header.CONTENT_TYPE, MediaType.IMAGE_JPEG).print((byte[])livenessSession.get(LivenessResource.Fields.ZOOMED_FACE_IMAGE));
     }
 
-    private void processLivenessSession(String sessionId, DataObject livenessSession) {
+    private void processLivenessSession(Request request, DataObject livenessSession) {
+        String sessionId = request.get("sessionId");
+        String serverUrl = request.getServerUrl();
         int livenessId = livenessSession.get(LivenessResource.Fields.ID);
-        livenessSession.set(LivenessResource.Fields.FACE_IMAGE, "/clients/" + sessionId + "/liveness/" + livenessId + "/faceImage.jpeg");
-        livenessSession.set(LivenessResource.Fields.ZOOMED_FACE_IMAGE, "/clients/" + sessionId + "/liveness/" + livenessId + "/zoomedFaceImage.jpeg");
+        livenessSession.set(LivenessResource.Fields.FACE_IMAGE, serverUrl + "/platform/" + sessionId + "/liveness/" + livenessId + "/faceImage.jpeg");
+        livenessSession.set(LivenessResource.Fields.ZOOMED_FACE_IMAGE, serverUrl + "/platform/" + sessionId + "/liveness/" + livenessId + "/zoomedFaceImage.jpeg");
     }
 }
