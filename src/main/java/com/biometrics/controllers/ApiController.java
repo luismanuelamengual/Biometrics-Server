@@ -55,8 +55,12 @@ public class ApiController {
     private static final String STATUS_PROPERTY_NAME = "status";
     private static final String CLIENT_ID_PARAMETER_NAME = "client";
     private static final String IP_PARAMETER_NAME = "ip";
+    private static final String HOST_PARAMETER_NAME = "host";
     private static final String TIMESTAMP_PARAMETER_NAME = "timestamp";
 
+    private static final String PROTOCOL_SEPARATOR = "://";
+    private static final String PATH_SEPARATOR = "/";
+    private static final String PORT_SEPARATOR = ":";
     private static final char IP_SEPARATOR = ',';
     private static final String AUTHORIZATION_BEARER = "Bearer";
 
@@ -89,6 +93,7 @@ public class ApiController {
             request.set(CLIENT_ID_PARAMETER_NAME, verifiedToken.getClaim(Authentication.CLIENT_ID_CLAIM_NAME).asInt());
             request.set(IP_PARAMETER_NAME, ip);
             request.set(TIMESTAMP_PARAMETER_NAME, System.currentTimeMillis());
+            request.set(HOST_PARAMETER_NAME, getHost(request));
 
             Claim allowedIpsClaim = verifiedToken.getClaim(Authentication.ALLOWED_IPS_CLAIM_NAME);
             if (!(allowedIpsClaim instanceof NullClaim)) {
@@ -132,8 +137,8 @@ public class ApiController {
                     .set(LivenessResource.Fields.VERSION, getProperty("appVersion"))
                     .set(LivenessResource.Fields.CLIENT_ID, request.get(CLIENT_ID_PARAMETER_NAME))
                     .set(LivenessResource.Fields.IP_ADDRESS, request.get(IP_PARAMETER_NAME))
-                    .set(LivenessResource.Fields.HOST, "-")
-                    .set(LivenessResource.Fields.DEVICE, "-")
+                    .set(LivenessResource.Fields.HOST, request.get(HOST_PARAMETER_NAME))
+                    .set(LivenessResource.Fields.DEVICE, request.getHeader(Header.USER_AGENT))
                     .insert();
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -219,6 +224,27 @@ public class ApiController {
             clientIp = clientIp.substring(0, index);
         }
         return clientIp;
+    }
+
+    private String getHost(Request request) {
+        String host = request.getHeader(Header.REFERER);
+        if (host != null) {
+            int protocolIndex = host.indexOf(PROTOCOL_SEPARATOR);
+            if (protocolIndex >= 0) {
+                host = host.substring(protocolIndex + PROTOCOL_SEPARATOR.length());
+            }
+            int firstPathSeparatorIndex = host.indexOf(PATH_SEPARATOR);
+            if (firstPathSeparatorIndex >= 0) {
+                host = host.substring(0, firstPathSeparatorIndex);
+            }
+            int portSeparatorIndex = host.indexOf(PORT_SEPARATOR);
+            if (portSeparatorIndex >= 0) {
+                host = host.substring(0, portSeparatorIndex);
+            }
+        } else {
+            host = "-";
+        }
+        return host;
     }
 
     public int verifyLivenessImages(byte[] imageBytes, byte[] zoomedImageBytes) {
