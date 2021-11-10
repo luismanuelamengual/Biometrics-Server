@@ -78,6 +78,14 @@ sudo apt install tesseract-ocr
 
 pg_dump biometrics > biometrics.sql
 
+## Reseting (Deleting) database in heroku
+
+heroku pg:reset DATABASE -a biometrics-server
+
+## Pushing local database to heroku
+
+heroku pg:push biometrics DATABASE_URL -a biometrics-server
+
 ## Sending Requests
 
 Add the follwing header for requests
