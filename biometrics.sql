@@ -27,13 +27,15 @@ SET default_table_access_method = heap;
 CREATE TABLE public.liveness (
     id integer NOT NULL,
     date timestamp without time zone NOT NULL,
-    version text,
-    clientip text,
+    version text NOT NULL,
+    ipaddress text NOT NULL,
     faceimage bytea NOT NULL,
     zoomedfaceimage bytea NOT NULL,
     success boolean NOT NULL,
     status integer NOT NULL,
-    clientid integer NOT NULL
+    clientid integer NOT NULL,
+    host text NOT NULL,
+    device text NOT NULL
 );
 
 
@@ -72,7 +74,7 @@ ALTER TABLE ONLY public.liveness ALTER COLUMN id SET DEFAULT nextval('public.liv
 -- Data for Name: liveness; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.liveness (id, date, version, clientip, faceimage, zoomedfaceimage, success, status, clientid) FROM stdin;
+COPY public.liveness (id, date, version, ipaddress, faceimage, zoomedfaceimage, success, status, clientid, host, device) FROM stdin;
 \.
 
 
@@ -80,7 +82,7 @@ COPY public.liveness (id, date, version, clientip, faceimage, zoomedfaceimage, s
 -- Name: liveness_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.liveness_id_seq', 12, true);
+SELECT pg_catalog.setval('public.liveness_id_seq', 13, true);
 
 
 --

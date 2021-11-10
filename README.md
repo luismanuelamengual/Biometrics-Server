@@ -74,6 +74,10 @@ Create a file "credentials" in .aws folder with the following content
 sudo apt install tesseract-ocr
 </pre>
 
+## Dump database to file (biometrics.sql)
+
+pg_dump biometrics > biometrics.sql
+
 ## Sending Requests
 
 Add the follwing header for requests
