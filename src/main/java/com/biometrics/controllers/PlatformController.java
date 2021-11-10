@@ -36,7 +36,7 @@ public class PlatformController {
 
     @Get("liveness")
     public Collection<DataObject> getLivenessSessions(@Param(name="limit", required = false) Integer limit) {
-        Collection<DataObject> livenessSessions = Resources.get(LivenessResource.NAME).limit(limit != null? limit : 10).orderBy(LivenessResource.Fields.ID, SortDirection.DESC).select(LivenessResource.Fields.ID, LivenessResource.Fields.CLIENT_IP, LivenessResource.Fields.CLIENT_ID, LivenessResource.Fields.STATUS, LivenessResource.Fields.DATE, LivenessResource.Fields.SUCCESS, LivenessResource.Fields.VERSION).find();
+        Collection<DataObject> livenessSessions = Resources.get(LivenessResource.NAME).limit(limit != null? limit : 10).orderBy(LivenessResource.Fields.ID, SortDirection.DESC).select(LivenessResource.Fields.ID, LivenessResource.Fields.IP_ADDRESS, LivenessResource.Fields.CLIENT_ID, LivenessResource.Fields.STATUS, LivenessResource.Fields.DATE, LivenessResource.Fields.SUCCESS, LivenessResource.Fields.VERSION, LivenessResource.Fields.HOST, LivenessResource.Fields.DEVICE).find();
         String sessionId = getRequest().get("sessionId");
         for (DataObject livenessSession : livenessSessions) {
             processLivenessSession(sessionId, livenessSession);
@@ -46,7 +46,7 @@ public class PlatformController {
 
     @Get("liveness/:id")
     public DataObject getLivenessSession(@Param("id") int livenessId) {
-        DataObject livenessSession = Resources.get(LivenessResource.NAME).select(LivenessResource.Fields.ID, LivenessResource.Fields.DATE, LivenessResource.Fields.VERSION, LivenessResource.Fields.SUCCESS, LivenessResource.Fields.STATUS, LivenessResource.Fields.CLIENT_ID, LivenessResource.Fields.CLIENT_IP).where(LivenessResource.Fields.ID, livenessId).first();
+        DataObject livenessSession = Resources.get(LivenessResource.NAME).select(LivenessResource.Fields.ID, LivenessResource.Fields.DATE, LivenessResource.Fields.VERSION, LivenessResource.Fields.SUCCESS, LivenessResource.Fields.STATUS, LivenessResource.Fields.CLIENT_ID, LivenessResource.Fields.IP_ADDRESS, LivenessResource.Fields.HOST, LivenessResource.Fields.DEVICE).where(LivenessResource.Fields.ID, livenessId).first();
         if (livenessSession == null) {
             throw new RuntimeException("Liveness session \"" + livenessId + "\" not found !!");
         }

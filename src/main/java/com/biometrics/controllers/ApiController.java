@@ -27,7 +27,11 @@ import org.opencv.core.Mat;
 import org.opencv.core.Rect;
 import org.opencv.objdetect.CascadeClassifier;
 
+import java.util.Date;
 import java.util.Map;
+
+import static org.neogroup.warp.Warp.getProperty;
+import static org.neogroup.warp.Warp.getRequest;
 
 @ControllerComponent("api")
 public class ApiController {
@@ -117,13 +121,19 @@ public class ApiController {
             response.set(LIVENESS_PROPERTY_NAME, false);
             response.set(STATUS_PROPERTY_NAME, status);
         }
-
         try {
+            Request request = getRequest();
             Resources.get(LivenessResource.NAME)
                     .set(LivenessResource.Fields.FACE_IMAGE, imageBytes)
                     .set(LivenessResource.Fields.ZOOMED_FACE_IMAGE, zoomedImageBytes)
                     .set(LivenessResource.Fields.SUCCESS, success)
                     .set(LivenessResource.Fields.STATUS, status)
+                    .set(LivenessResource.Fields.DATE, new Date())
+                    .set(LivenessResource.Fields.VERSION, getProperty("appVersion"))
+                    .set(LivenessResource.Fields.CLIENT_ID, request.get(CLIENT_ID_PARAMETER_NAME))
+                    .set(LivenessResource.Fields.IP_ADDRESS, request.get(IP_PARAMETER_NAME))
+                    .set(LivenessResource.Fields.HOST, "-")
+                    .set(LivenessResource.Fields.DEVICE, "-")
                     .insert();
         } catch (Exception ex) {
             ex.printStackTrace();
