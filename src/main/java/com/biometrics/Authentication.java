@@ -30,6 +30,10 @@ public abstract class Authentication {
         return createToken(clientId, expirationDate, null, null);
     }
 
+    public static String createToken(int clientId, Date expirationDate, String[] allowedDomains) throws JWTCreationException {
+        return createToken(clientId, expirationDate, allowedDomains, null);
+    }
+
     public static String createToken(int clientId, String[] allowedDomains) throws JWTCreationException {
         return createToken(clientId, null, allowedDomains, null);
     }

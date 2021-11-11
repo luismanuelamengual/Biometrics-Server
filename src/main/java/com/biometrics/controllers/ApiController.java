@@ -107,7 +107,7 @@ public class ApiController {
                     }
                 }
                 if (!allowed) {
-                    throw new ResponseException("Ip \"" + ip + "\" is not allowed !!");
+                    throw new JWTVerificationException("Ip \"" + ip + "\" is not allowed !!");
                 }
             }
 
@@ -122,13 +122,13 @@ public class ApiController {
                     }
                 }
                 if (!allowed) {
-                    throw new ResponseException("Host \"" + host + "\" is not allowed !!");
+                    throw new JWTVerificationException("Host \"" + host + "\" is not allowed !!");
                 }
             }
 
         } catch (JWTVerificationException verificationException) {
             response.setStatus(StatusCode.UNAUTHORIZED);
-            throw new ResponseException("Invalid authorization token");
+            throw new ResponseException("Invalid authorization token (" + verificationException.getMessage() + ")");
         }
     }
 
